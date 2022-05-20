@@ -1,0 +1,4 @@
+/.vscode/
+/build/
+/hls/out/*.ll
+/hls/out/*.v
