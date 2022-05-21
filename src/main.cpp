@@ -10,6 +10,7 @@
 
 #include "config.hpp"
 
+#include "hardware/HardwareConstraints.hpp"
 #include "BitpackHls.hpp"
 
 static const int MAIN_ARGC = 3;
@@ -18,6 +19,8 @@ static const std::string HLS_OUT_DIR(D_HLS_OUT_DIR);
 
 static llvm::LLVMContext llvm_context;
 static llvm::SMDiagnostic llvm_err;
+
+auto* constraints = llvm::bphls::hardware::HardwareConstraints::getHardwareConstraints();
 
 int main(int argc, char const *argv[]) {
     if (argc != MAIN_ARGC) {
@@ -28,7 +31,15 @@ int main(int argc, char const *argv[]) {
     std::string ir_file(argv[1]);
     std::string function_name(argv[2]);
 
+    std::cout << ir_file << " " << function_name << std::endl;
+
     auto module = llvm::parseIRFile(ir_file, llvm_err, llvm_context);
+
+    if (module.get() == nullptr) {
+        std::cerr << "IR module not found" << std::endl;
+        return 1;
+    }
+
     auto function = module->getFunction(function_name);
 
     if (function == nullptr) {
