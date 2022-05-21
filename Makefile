@@ -20,8 +20,8 @@ OBJ_DIR = $(BUILD_DIR)/obj
 
 # Search directories
 vpath %.o $(OBJ_DIR)
-vpath %.cpp $(SRC_DIR)
-vpath %.hpp $(INCLUDE_DIR)
+vpath %.cpp $(shell find ./src -type d -printf "%p ")
+vpath %.hpp $(INCLUDE_DIR) $(shell find ./src -type d -printf "%p ")
 
 # Rules for creating a build directory tree
 $(BUILD_DIR):
@@ -57,8 +57,8 @@ INCLUDE_PATH = $(addprefix -I ,$(shell find $(INCLUDE_DIR) -type d -printf "%p "
 INCLUDE_PATH += -I /usr/include/llvm-14 -I /usr/include/llvm-c-14
 
 # Library path
-LIB_PATH = $(addprefix -L ,$(shell find $(LIB_DIR) -type d -printf "%p "))
-LIB_PATH +=
+# LIB_PATH = $(addprefix -L ,$(shell find $(LIB_DIR) -type d -printf "%p "))
+# LIB_PATH +=
 
 # Libraries -------------------------------------------------------------------
 
@@ -75,7 +75,7 @@ CXX_FLAGS = -std=c++17 -Wall -Wpedantic $(INCLUDE_PATH)
 LD_FLAGS = $(LIB_PATH) $(LIB_LINK)
 
 ifeq ($(BUILD_TYPE), DEBUG)
-CXX_FLAGS += -Og
+CXX_FLAGS += -Og -g
 else ifeq ($(BUILD_TYPE), RELEASE)
 CXX_FLAGS += -O2 -D NDEBUG
 else
@@ -95,7 +95,7 @@ endif
 ###############################################################################
 
 # List of source files
-SOURCES := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
+SOURCES := $(notdir $(shell find ./src -type f -name "*.cpp" -printf "%p "))
 
 # List of object files
 OBJECTS := $(SOURCES:%.cpp=$(OBJ_DIR)/%.o)
