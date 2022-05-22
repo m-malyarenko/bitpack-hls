@@ -4,6 +4,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/ADT/DenseMap.h>
 
+#include <llvm/Support/FormattedStream.h>
+
 #include "InstructionNode.hpp"
 
 namespace llvm {
@@ -16,7 +18,7 @@ public:
 
     bool create(BasicBlock& basic_block);
 
-    void exportDot();
+    void exportDot(formatted_raw_ostream& out, BasicBlock& basic_block);
 
 private:
     DenseMap<Instruction*, InstructionNode*> instr_node_lookup;

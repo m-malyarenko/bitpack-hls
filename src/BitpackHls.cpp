@@ -1,8 +1,10 @@
 #include <iostream>
 #include <string>
 
-#include <llvm/IR/Function.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/FormattedStream.h>
+
+#include <llvm/IR/Function.h>
 
 #include "scheduling/Dag.hpp"
 #include "BitpackHls.hpp"
@@ -27,6 +29,14 @@ bool bphls::BitpackHls::run() {
 
     Dag dag;
     const bool dag_status = dag.create(basic_block);
+
+    std::string out_buffer;
+    raw_string_ostream out_stream(out_buffer);
+    formatted_raw_ostream fmt_out_stream(out_stream);
+
+    dag.exportDot(fmt_out_stream, basic_block);
+
+    std::cout << out_stream.str() << std::endl;
 
     // for (auto& instr : bb) {
     //     hls_output << instr.getOpcodeName() << "\n\t";

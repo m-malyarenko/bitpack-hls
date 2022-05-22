@@ -6,6 +6,7 @@
 #include <llvm/IR/User.h>
 
 #include "../utility/instruction_utility.hpp"
+#include "../utility/DotGraph.hpp"
 
 #include "../hardware/HardwareConstraints.hpp"
 #include "../hardware/Operation.hpp"
@@ -31,6 +32,7 @@ bool Dag::create(BasicBlock& basic_block) {
     }
 
     for (auto& instr : basic_block) {
+        std::cout << instr.getOpcodeName() << std::endl;
         constructDependencies(instr);
     }
 
@@ -109,9 +111,43 @@ void Dag::constructDependencies(Instruction& instr) {
 
     /* Call dependencies */
     // TODO Not supported
-    assert(!isa<CallInst>(instr));
+    assert(!(isa<CallInst>(instr) && utility::isDummyCall(instr)));
 }
 
-void exportDot() {
-    // TODO Implement method
+void printNodeLabel(raw_ostream &out, InstructionNode* instr_node) {
+    out << instr_node->getInstruction().getOpcodeName();
+}
+
+void Dag::exportDot(formatted_raw_ostream& out, BasicBlock& basic_block) {
+    dotGraph<InstructionNode> graph(out, printNodeLabel);
+    graph.setLabelLimit(40);
+
+    for (auto& instr : basic_block) {
+        auto& instr_node = *instr_node_lookup[&instr];
+
+        if (utility::isDummyCall(instr)) {
+            continue;
+        }
+
+        std::string label = "label=\"D: ns L: \",";
+
+        for (auto user : instr.users()) {
+            if (Instruction* child = dyn_cast<Instruction>(user)) {
+
+                if (utility::isDummyCall(*child)) {
+                    continue;
+                }
+
+                graph.connectDot(out, &instr_node, instr_node_lookup[child], label + "color=blue");
+            }
+        }
+
+        // for (InstructionNode::iterator use = op->mem_use_begin(),
+        //                                e = op->mem_use_end();
+        //      use != e; ++use) {
+        //     if (ignoreDummyCalls && isaDummyCall((*use)->getInst()))
+        //         continue;
+        //     graph.connectDot(out, op, *use, label + "color=red");
+        // }
+    }
 }
