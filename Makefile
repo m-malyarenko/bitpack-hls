@@ -62,7 +62,7 @@ INCLUDE_PATH += -I /usr/include/llvm-14 -I /usr/include/llvm-c-14
 
 # Libraries -------------------------------------------------------------------
 
-LIB = LLVM-14
+LIB = LLVM-14 lpsolve55 colamd
 
 LIB_LINK = $(addprefix -l,$(LIB))
 
