@@ -3,7 +3,7 @@
 
 #include <llvm/IR/Function.h>
 
-#include "Dag.hpp"
+#include "dag/Dag.hpp"
 #include "fsm/Fsm.hpp"
 
 namespace llvm {
@@ -11,7 +11,7 @@ namespace llvm {
 
 class Scheduler {
 public:
-    virtual Fsm& schedule(Function& function, Dag& dag) = 0;
+    virtual Fsm* schedule(Function& function, Dag& dag) = 0;
 };
 
     } /* namespace bphls */ 
