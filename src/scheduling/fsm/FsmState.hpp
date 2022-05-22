@@ -32,6 +32,29 @@ public:
               signal(0),
               default_transition(0) {};
     };
+
+    typedef std::list<Instruction*> InstructionList;
+
+    FsmState(Fsm* parent)
+        : basic_block(nullptr),
+          parent(parent),
+          terminating(false) {};
+
+    void setDefaultTransition(FsmState *s)  { transition.default_transition = s; }
+    FsmState* getDefaultTransition()        { return transition.default_transition; }
+
+    void setName(std::string new_name)      { name = new_name; }
+    std::string& getName()                  { return name; }
+
+private:
+    InstructionList instr_list;
+
+    std::string name;
+    Fsm* parent;
+    BasicBlock* basic_block;
+
+    Transition transition;
+    bool terminating;
 };
 
     } /* namespace bphls */

@@ -2,9 +2,10 @@
 #define __HARDWARE_OHARDWARE_CONSTRAINTS_HPP__
 
 #include <map>
+#include <optional>
 
 #include <llvm/IR/Instruction.h>
-#include "Operation.hpp"
+#include "FunctionalUnit.hpp"
 
 namespace llvm {
     namespace bphls {
@@ -19,7 +20,9 @@ public:
     typedef unsigned int InstructionOpcode;
 
     float max_delay;
-    std::map<InstructionOpcode, Operation*> instr_impl;
+    std::map<InstructionOpcode, FunctionalUnit*> instr_impl;
+    std::map<FunctionalUnit*, std::optional<unsigned int>> fu_num_constraints;
+
 private:
     static HardwareConstraints* constraints;
 
