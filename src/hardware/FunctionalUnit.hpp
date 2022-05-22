@@ -7,7 +7,7 @@ namespace llvm {
     namespace bphls {
         namespace hardware {
 
-struct Operation {
+struct FunctionalUnit {
     float f_max;
     float crit_delay;
     uint16_t latency;
@@ -15,7 +15,7 @@ struct Operation {
     uint16_t n_reg;
     uint16_t n_log_element;
 
-    Operation(
+    FunctionalUnit(
         float f_max = 50.0F,
         float crit_delay = 0.0F,
         uint16_t latency = 0,
