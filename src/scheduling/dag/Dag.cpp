@@ -5,11 +5,11 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/User.h>
 
-#include "../utility/instruction_utility.hpp"
-#include "../utility/DotGraph.hpp"
+#include "../../utility/instruction_utility.hpp"
+#include "../../utility/DotGraph.hpp"
 
-#include "../hardware/HardwareConstraints.hpp"
-#include "../hardware/Operation.hpp"
+#include "../../hardware/HardwareConstraints.hpp"
+#include "../../hardware/FunctionalUnit.hpp"
 
 #include "Dag.hpp"
 
@@ -37,6 +37,10 @@ bool Dag::create(BasicBlock& basic_block) {
     }
 
     return true;
+}
+
+InstructionNode& Dag::getNode(Instruction& instr) {
+    return *instr_node_lookup[&instr];
 }
 
 void Dag::insertInstruction(Instruction& instr) {
@@ -80,38 +84,36 @@ void Dag::constructDependencies(Instruction& instr) {
         dep_instr_node.addUse(instr_node);
     }
 
-    /* Alias dependencies */
-    // if (isa<LoadInst>(instr) || isa<StoreInst>(instr)) {
-    //     auto& basic_block = *instr.getParent();
-
-    //     for (auto& dep_instr : basic_block) {
-    //         auto& instr_a = dep_instr;
-    //         auto& instr_b = instr;
-
-    //         if (&instr_a == &instr_b) {
-    //             /* The investigated instruction has been reached */
-    //             break;
-    //         }
-
-    //         if ((!isa<LoadInst>(instr_a)
-    //                 && !isa<StoreInst>(instr_a)
-    //                 && !isa<CallInst>(instr_a))
-    //                     || utility::isDummyCall(instr_a)) {
-    //             continue;
-    //         }
-
-    //     if (hasAliasDependency(instr_a, instr_b)) {
-    //         auto& dep_instr_node = *instr_node_lookup[&instr_a];
-
-    //         instr_node.addDependence(dep_instr_node);
-    //         dep_instr_node.addUse(instr_node);
-    //     }
-    //     }
-    // }
-
-    /* Call dependencies */
-    // TODO Not supported
+    /* TODO Call dependencies */
     assert(!(isa<CallInst>(instr) && utility::isDummyCall(instr)));
+
+    /* TODO Alias dependencies */
+    /*if (isa<LoadInst>(instr) || isa<StoreInst>(instr)) {
+        auto& basic_block = *instr.getParent();
+
+        for (auto& dep_instr : basic_block) {
+            auto& instr_a = dep_instr;
+            auto& instr_b = instr;
+
+            if (&instr_a == &instr_b) {
+                break;
+            }
+
+            if ((!isa<LoadInst>(instr_a)
+                    && !isa<StoreInst>(instr_a)
+                    && !isa<CallInst>(instr_a))
+                        || utility::isDummyCall(instr_a)) {
+                continue;
+            }
+
+        if (hasAliasDependency(instr_a, instr_b)) {
+            auto& dep_instr_node = *instr_node_lookup[&instr_a];
+
+            instr_node.addDependence(dep_instr_node);
+            dep_instr_node.addUse(instr_node);
+        }
+        }
+    }*/
 }
 
 void printNodeLabel(raw_ostream &out, InstructionNode* instr_node) {

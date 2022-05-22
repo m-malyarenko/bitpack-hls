@@ -18,9 +18,9 @@ void InstructionNode::setMaxDelay() {
 }
 
 void  InstructionNode::addDependence(InstructionNode& dep_instr_node) {
-    dependencies.push_back(&dep_instr_node);
+    dependencies_list.push_back(&dep_instr_node);
 }
 
 void InstructionNode::addUse(InstructionNode& use_instr_node) {
-    users.push_back(&use_instr_node);
+    users_list.push_back(&use_instr_node);
 }

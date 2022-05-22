@@ -20,6 +20,8 @@ public:
 
     void exportDot(formatted_raw_ostream& out, BasicBlock& basic_block);
 
+    InstructionNode& getNode(Instruction& instr);
+
 private:
     DenseMap<Instruction*, InstructionNode*> instr_node_lookup;
 

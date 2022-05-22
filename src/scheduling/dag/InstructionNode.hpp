@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include <llvm/ADT/iterator_range.h>
 #include <llvm/IR/Instruction.h>
 
 namespace llvm {
@@ -22,13 +23,23 @@ public:
 
     Instruction& getInstruction() { return instruction; };
 
+    typedef std::vector<InstructionNode*>::iterator InstructionNodeIterator;
+
+    iterator_range<InstructionNodeIterator> dependencies() {
+        return make_range(dependencies_list.begin(), dependencies_list.end());
+    }
+
+    iterator_range<InstructionNodeIterator> users() {
+        return make_range(users_list.begin(), users_list.end());
+    }
+
 private:
     Instruction& instruction;
 
     float delay;
 
-    std::vector<InstructionNode*> dependencies;
-    std::vector<InstructionNode*> users;
+    std::vector<InstructionNode*> dependencies_list;
+    std::vector<InstructionNode*> users_list;
 };
 
     } /* namespace bphls */ 
