@@ -6,7 +6,7 @@
 
 #include <llvm/IR/Function.h>
 
-#include "scheduling/Dag.hpp"
+#include "scheduling/dag/Dag.hpp"
 #include "BitpackHls.hpp"
 
 using namespace llvm;
