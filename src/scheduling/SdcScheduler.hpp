@@ -8,8 +8,8 @@
 
 #include <lpsolve/lp_lib.h>
 
-#include "fsm/Fsm.hpp"
-#include "dag/Dag.hpp"
+#include "SchedulerMapping.hpp"
+#include "Dag.hpp"
 #include "Scheduler.hpp"
 
 namespace llvm {
@@ -19,7 +19,9 @@ class SdcScheduler : public Scheduler {
 public:
     SdcScheduler();
 
-    Fsm* schedule(Function& function, Dag& dag) override;
+    ~SdcScheduler() {};
+
+    SchedulerMapping* schedule(Function& function, Dag& dag) override;
 
 private:
     unsigned int n_instr;
@@ -33,8 +35,6 @@ private:
         Asap,
         Alap,
     };
-
-    static unsigned int getInstructionCycles(Instruction& instr);
 
     unsigned int createLpVariables(Function& function, Dag& dag);
 
