@@ -7,8 +7,7 @@
 #include <lpsolve/lp_lib.h>
 
 #include "../hardware/HardwareConstraints.hpp"
-#include "fsm/Fsm.hpp"
-#include "dag/Dag.hpp"
+#include "Dag.hpp"
 #include "SchedulerMapping.hpp"
 
 #include "SdcScheduler.hpp"
@@ -30,7 +29,7 @@ extern llvm::bphls::hardware::HardwareConstraints* constraints;
 SdcScheduler::SdcScheduler()
     : n_instr(0) {}
 
-Fsm* SdcScheduler::schedule(Function& function, Dag& dag) {
+SchedulerMapping* SdcScheduler::schedule(Function& function, Dag& dag) {
     unsigned int n_lpvar = createLpVariables(function, dag);
 
     lp_solver = make_lp(0, n_lpvar);
@@ -54,10 +53,7 @@ Fsm* SdcScheduler::schedule(Function& function, Dag& dag) {
 
     delete_lp(lp_solver);
 
-    auto* fsm = mapping->createFSM(function, dag);
-
-    delete mapping;
-    return fsm;
+    return mapping;
 }
 
 unsigned int SdcScheduler::createLpVariables(Function& function, Dag& dag) {
@@ -366,18 +362,4 @@ SchedulerMapping* SdcScheduler::mapSchedule(Function& function, Dag& dag) {
     lpvars = nullptr;
 
     return mapping;
-}
-
-unsigned int SdcScheduler::getInstructionCycles(Instruction& instr) {
-    /* TODO Fill in correct data */
-    switch (instr.getOpcode()) {
-    case Instruction::Store:
-        return 1;
-    case Instruction::Load:
-        return 1;
-    case Instruction::Mul:
-        return 2;
-    default:
-        return 0;
-    }
 }

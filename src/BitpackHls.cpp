@@ -6,7 +6,10 @@
 
 #include <llvm/IR/Function.h>
 
-#include "scheduling/dag/Dag.hpp"
+#include "scheduling/Dag.hpp"
+#include "scheduling/SdcScheduler.hpp"
+#include "scheduling/SchedulerMapping.hpp"
+#include "scheduling/fsm/Fsm.hpp"
 #include "BitpackHls.hpp"
 
 using namespace llvm;
@@ -27,16 +30,21 @@ bool bphls::BitpackHls::run() {
 
     auto& basic_block = basic_block_list.front();
 
-    Dag dag;
-    const bool dag_status = dag.create(basic_block);
+    Dag* dag = new Dag(basic_block);
 
-    std::string out_buffer;
-    raw_string_ostream out_stream(out_buffer);
-    formatted_raw_ostream fmt_out_stream(out_stream);
+    Scheduler* scheduler = new SdcScheduler();
 
-    dag.exportDot(fmt_out_stream, basic_block);
+    SchedulerMapping* mapping = scheduler->schedule(function, *dag);
 
-    std::cout << out_stream.str() << std::endl;
+    Fsm* fsm = mapping->createFSM(function, *dag);
+
+    // std::string out_buffer;
+    // raw_string_ostream out_stream(out_buffer);
+    // formatted_raw_ostream fmt_out_stream(out_stream);
+
+    // dag.exportDot(fmt_out_stream, basic_block);
+
+    // std::cout << out_stream.str() << std::endl;
 
     // for (auto& instr : bb) {
     //     hls_output << instr.getOpcodeName() << "\n\t";
@@ -62,8 +70,12 @@ bool bphls::BitpackHls::run() {
     // }
 
     // std::cout << hls_output.str() << std::endl;
+    delete dag;
+    delete scheduler;
+    delete mapping;
+    delete fsm;
 
-    return dag_status;
+    return true;
 }
 
 void bphls::BitpackHls::writeOut(raw_ostream& hls_out) {}
