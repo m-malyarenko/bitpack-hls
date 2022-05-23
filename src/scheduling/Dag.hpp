@@ -13,10 +13,9 @@ namespace llvm {
 
 class Dag {
 public:
-    Dag();
-    ~Dag();
+    Dag(BasicBlock& basic_block);
 
-    bool create(BasicBlock& basic_block);
+    ~Dag();
 
     void exportDot(formatted_raw_ostream& out, BasicBlock& basic_block);
 
@@ -24,6 +23,8 @@ public:
 
 private:
     DenseMap<Instruction*, InstructionNode*> instr_node_lookup;
+
+    bool create(BasicBlock& basic_block);
 
     void insertInstruction(Instruction& instr);
 

@@ -5,11 +5,11 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/User.h>
 
-#include "../../utility/instruction_utility.hpp"
-#include "../../utility/DotGraph.hpp"
+#include "../utility/instruction_utility.hpp"
+#include "../utility/DotGraph.hpp"
 
-#include "../../hardware/HardwareConstraints.hpp"
-#include "../../hardware/FunctionalUnit.hpp"
+#include "../hardware/HardwareConstraints.hpp"
+#include "../hardware/FunctionalUnit.hpp"
 
 #include "Dag.hpp"
 
@@ -18,7 +18,9 @@ extern llvm::bphls::hardware::HardwareConstraints* constraints;
 using namespace llvm;
 using namespace bphls;
 
-Dag::Dag() {};
+Dag::Dag(BasicBlock& basic_block) {
+    create(basic_block);
+};
 
 Dag::~Dag() {
     for (auto instr_node : instr_node_lookup) {
