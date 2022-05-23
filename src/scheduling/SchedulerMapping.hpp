@@ -4,11 +4,13 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
 
 #include <llvm/ADT/DenseMap.h>
 
-#include "dag/InstructionNode.hpp"
-#include "dag/Dag.hpp"
+#include "InstructionNode.hpp"
+#include "Dag.hpp"
+#include "fsm/FsmState.hpp"
 #include "fsm/Fsm.hpp"
 
 namespace llvm {
@@ -16,9 +18,9 @@ namespace llvm {
 
 class SchedulerMapping {
 public:
-    unsigned int getState(InstructionNode *i) { return map[i]; }
+    unsigned int getState(InstructionNode* instr) { return map[instr]; }
 
-    void setState(InstructionNode *i, unsigned int state) { map[i] = state; }
+    void setState(InstructionNode* instr, unsigned int state) { map[instr] = state; }
 
     unsigned int getNumStates(BasicBlock* bb) { return state_num[bb]; }
 
@@ -29,6 +31,11 @@ public:
 private:
     DenseMap<InstructionNode*, unsigned int> map;
     DenseMap<BasicBlock*, unsigned int> state_num;
+
+    void setFsmStateTransitions(FsmState* last_state,
+                                FsmState* wait_state,
+                                Instruction* term_instr,
+                                std::map<BasicBlock*, FsmState*> bb_firs_state);
 };
 
     } /* namespace bphls */ 

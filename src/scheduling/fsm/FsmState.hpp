@@ -6,14 +6,17 @@
 #include <list>
 #include <vector>
 
-#include "llvm/ADT/ilist.h"
-#include "llvm/ADT/ilist_node.h"
-#include "llvm/IR/Instructions.h"
+#include <llvm/ADT/ilist.h>
+#include <llvm/ADT/ilist_node.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Value.h>
 
 #include "../../rtl/RtlSignal.hpp"
 
 namespace llvm {
     namespace bphls {
+
+class Fsm;
 
 class FsmState : public ilist_node<FsmState> {
 public:
@@ -21,7 +24,7 @@ public:
         Value* variable;
         rtl::RtlSignal* signal;
 
-        std::vector<FsmState*> values;
+        std::vector<Value*> values;
         std::vector<FsmState*> states;
 
         std::set<FsmState*> predecessors;
@@ -36,15 +39,29 @@ public:
     typedef std::list<Instruction*> InstructionList;
 
     FsmState(Fsm* parent)
-        : basic_block(nullptr),
-          parent(parent),
+        : parent(parent),
+          basic_block(nullptr),
           terminating(false) {};
 
-    void setDefaultTransition(FsmState *s)  { transition.default_transition = s; }
-    FsmState* getDefaultTransition()        { return transition.default_transition; }
+    void addTransition(FsmState* state, Value* value = nullptr);
 
-    void setName(std::string new_name)      { name = new_name; }
-    std::string& getName()                  { return name; }
+    void setDefaultTransition(FsmState* state);
+
+    void pushInstruction(Instruction* instr);
+
+    void setTerminatingFlag(bool term_flag);
+
+    void setTransitionVariable(Value* var);
+
+    FsmState* getDefaultTransition();
+
+    void setName(std::string new_name);
+
+    std::string& getName();
+
+    void setBasicBlock(BasicBlock* basic_block);
+
+    BasicBlock* getBasicBlock();
 
 private:
     InstructionList instr_list;

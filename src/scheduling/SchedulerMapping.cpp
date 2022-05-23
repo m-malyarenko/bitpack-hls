@@ -1,13 +1,18 @@
+#include <map>
+#include <vector>
+
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
 
 #include <llvm/ADT/DenseMap.h>
 
-#include "dag/InstructionNode.hpp"
-#include "dag/Dag.hpp"
-#include "fsm/Fsm.hpp"
+#include "../utility/basic_block_utility.hpp"
 #include "fsm/FsmState.hpp"
+#include "fsm/Fsm.hpp"
+#include "InstructionNode.hpp"
+#include "Dag.hpp"
+#include "SdcScheduler.hpp"
 
 #include "SchedulerMapping.hpp"
 
@@ -17,158 +22,171 @@ using namespace bphls;
 Fsm* SchedulerMapping::createFSM(Function& function, Dag& dag) {
     Fsm* fsm = new Fsm();
 
-    // very first state
     FsmState* wait_state = fsm->createState();
     wait_state->setDefaultTransition(wait_state);
 
+    std::map<BasicBlock*, unsigned int> bb_ids;
     std::map<BasicBlock*, FsmState*> bb_first_states;
     std::map<BasicBlock*, unsigned int> state_index;
 
-    unsigned bbNum = 0;
-    for (Function::iterator b = F->begin(), be = F->end(); b != be; ++b) {
-        if (isEmptyFirstBB(b))
+    unsigned int n_basic_block = 0;
+    for (auto& basic_block : function) {
+        bb_ids[&basic_block] = n_basic_block;
+
+        if (utility::isBasicBlockEmpty(basic_block)) {
             continue;
+        }
 
-        State *s = fsm->newState();
-        s->setBasicBlock(b);
-        bbFirstState[b] = s;
-        sCount[b] = 0;
+        FsmState* state = fsm->createState();
 
-        bbNum++;
+        state->setBasicBlock(&basic_block);
+        bb_first_states[&basic_block] = state;
+        state_index[&basic_block] = 0;
+
+        n_basic_block++;
     }
 
-    // setup wait state transitions
-    // setTransitionSignal(rtl->find("start"))
-    // will be done later when we have access
-    // to the RTL module
-    Function::iterator firstBB = F->begin();
-    if (BasicBlock *succ = isEmptyFirstBB(firstBB)) {
-        // first BB was empty with just an unconditional branch,
-        // so the waitstate should point to the next state, for instance:
-        // BB_0:
-        //   br label %BB_2
-        // also need to set the basic block so phi's are still handled properly
-        // for the empty BB
-        waitState->setTerminating(true);
-        waitState->setBasicBlock(firstBB);
-        assert(bbFirstState.find(succ) != bbFirstState.end());
-        waitState->addTransition(bbFirstState[succ]);
-    } else {
-        assert(bbFirstState.find(firstBB) != bbFirstState.end());
-        waitState->addTransition(bbFirstState[firstBB]);
+    {
+        auto& first_bb = function.front();
+        auto first_bb_succ = utility::isBasicBlockEmpty(function.front());
+
+        if (first_bb_succ.has_value()) {
+            wait_state->setTerminatingFlag(true);
+            wait_state->setBasicBlock(&first_bb);
+        
+            assert(bb_first_states.find(first_bb_succ.value()) != bb_first_states.end());
+        
+            wait_state->addTransition(bb_first_states[first_bb_succ.value()]);
+        } else {
+            assert(bb_first_states.find(&first_bb) != bb_first_states.end());
+            wait_state->addTransition(bb_first_states[&first_bb]);
+        }
     }
 
-    for (Function::iterator B = F->begin(), BE = F->end(); B != BE; ++B) {
-        std::map<unsigned, State *> orderStates;
-        if (isEmptyFirstBB(B))
+    for (auto& basic_block : function) {
+        std::map<unsigned int, FsmState*> states_order;
+
+        if (!utility::isBasicBlockEmpty(basic_block).has_value()) {
             continue;
+        }
 
-        orderStates[0] = bbFirstState[B];
-        unsigned lastState = getNumStates(B);
+        states_order[0] = bb_first_states[&basic_block];
+        unsigned int last_state = getNumStates(&basic_block);
 
-        // int pipelined = getMetadataInt(B->getTerminator(),
-        // "legup.pipelined");
+        assert(!states_order.empty());
 
-        // errs() << "BB: " << getLabel(B) << " lastState: " << lastState <<
-        // "\n";
-        createStates(1, lastState, orderStates, fsm);
+        for (unsigned int i = 1; i <= last_state; i++) {
+            states_order[i] = fsm->createState(states_order[i - 1]);
+        }
 
-        for (BasicBlock::iterator instr = B->begin(), ie = B->end();
-             instr != ie; ++instr) {
-            Instruction *I = instr;
-            unsigned order = getState(dag->getInstructionNode(I));
+        for (auto& instr : basic_block) {
+            unsigned int state_order = getState(&dag.getNode(instr));
+            states_order[state_order]->pushInstruction(&instr);
 
-            orderStates[order]->push_back(I);
+            unsigned int delay_state = Scheduler::getInstructionCycles(instr);
 
-            // need to ensure multi-cycle instructions finish in the basic block
-            unsigned delayState = Scheduler::getNumInstructionCycles(I);
-
-            // Normally, loads take two cycles and the loaded values are stored
-            // in shared memory controller output registers (port A or port B).
-            //
-            // In some flows however, we want each load to be stored in a
-            // separate
-            // register (e.g. to enable multi-cycle paths). But storing each
-            // load
-            // in a unique register and keeping the register on the output of
-            // the
-            // memory controller would make loads have a latency of 3, which is
-            // not needed. Instead, when a separate register is created for each
-            // load, make the FSM "think" that loads take 1 cycle (this is done
-            // below). Then the second register is placed at the output of each
-            // load (this is done in GenerateRTL.cpp, visitLoadInst);
-            if (isa<LoadInst>(I) && LEGUP_CONFIG->duplicate_load_reg()) {
-                delayState = 1; // Instead of normal 2 for loads
-            }
-
-            if (delayState == 0) {
-                fsm->setEndState(I, orderStates[order]);
+            if (delay_state == 0) {
+                fsm->setEndState(&instr, states_order[state_order]);
                 continue;
             }
 
-            delayState += order;
-            if (delayState > lastState) {
-
-                /*
-                // assume iterative module scheduler has already handled
-                // multi-cycle instructions
-                // can't insert a new state - assume its ready in the first
-                // state of next basic block
-                if (pipelined) {
-                    // this doesn't work for the kernel
-                    assert(isa<LoadInst>(I));
-                    //++B;
-                    //assert(B != BE);
-                    //fsm->setEndState(I, bbFirstState[B]);
-                    //--B;
-
-                    // all loads are assumed to be wires
-                    fsm->setEndState(I, orderStates[order]);
-
-                    continue;
+            delay_state += state_order;
+            if (delay_state > last_state) {
+                for (unsigned int i = last_state + 1; i <= delay_state; i++) {
+                    states_order[i] = fsm->createState(states_order[i - 1]);
                 }
-                */
-
-                createStates(lastState + 1, delayState, orderStates, fsm);
-                lastState = delayState;
+                last_state = delay_state;
             }
 
-            fsm->setEndState(I, orderStates[delayState]);
+            fsm->setEndState(&instr, states_order[delay_state]);
         }
 
-        setStateTransitions(orderStates[lastState], B->getTerminator(),
-                            waitState, bbFirstState);
-        orderStates[lastState]->setBasicBlock(B);
+        setFsmStateTransitions(
+            states_order[last_state],
+            wait_state,
+            basic_block.getTerminator(),
+            bb_first_states
+        );
 
-        for (unsigned i = 0; i < lastState; i++) {
-            assert(orderStates.find(i) != orderStates.end());
+        states_order[last_state]->setBasicBlock(&basic_block);
 
-            State *s = orderStates[i];
-            s->setBasicBlock(B);
-            s->setDefaultTransition(orderStates[i + 1]);
+        for (unsigned int i = 0; i < last_state; i++) {
+            assert(states_order.find(i) != states_order.end());
+
+            FsmState* state = states_order[i];
+            state->setBasicBlock(&basic_block);
+            state->setDefaultTransition(states_order[i + 1]);
         }
     }
 
-    FiniteStateMachine::iterator stateIter = fsm->begin();
-    for (; stateIter != fsm->end(); stateIter++) {
-        State *state = stateIter;
-        if (!state->getBasicBlock()) {
-            assert(state == waitState);
+    for (auto& state : fsm->states()) {
+        if (state.getBasicBlock() == nullptr) {
+            assert(&state == wait_state);
             continue;
         }
 
-        sCount[state->getBasicBlock()] += 1;
-        std::string newStateName = std::string("LEGUP_F_") +
-                                   F->getName().str().data() + "_BB_" +
-                                   getLabelStripped(state->getBasicBlock());
+        state_index[state.getBasicBlock()] += 1;
 
-        stripInvalidCharacters(newStateName);
-        state->setName(newStateName);
+        std::string new_state_name =
+            "BPHLS_F_" + function.getName().str() + "_BB_" + std::to_string(bb_ids[state.getBasicBlock()]);
+
+        state.setName(new_state_name);
     }
 
-    if (fsm->begin() != fsm->end())
-        fsm->begin()->setName("LEGUP");
+    if (!fsm->states().empty()) {
+        fsm->states().begin()->setName("LEGUP");
+    }
 
     return fsm;
 }
 
+void SchedulerMapping::setFsmStateTransitions(FsmState* last_state,
+                                              FsmState* wait_state,
+                                              Instruction* term_instr,
+                                              std::map<BasicBlock*, FsmState*> bb_firs_state)
+{
+    last_state->setTerminatingFlag(true);
+
+    if (isa<UnreachableInst>(term_instr) || isa<ReturnInst>(term_instr)) {
+        last_state->setDefaultTransition(wait_state);
+        return;
+    }
+
+    last_state->setTransitionVariable(term_instr->getOperand(0));
+
+    BasicBlock* default_branch_bb = nullptr;
+    
+    if (auto* switch_instr = dyn_cast<SwitchInst>(term_instr)) {
+        /* Switch */
+        const unsigned int switch_operands = switch_instr->getNumOperands(); 
+
+        for (unsigned i = 2; i < switch_operands; i += 2) {
+            Value* value = switch_instr->getOperand(i);
+            assert(value != nullptr);
+
+            auto* successor_bb = dyn_cast<BasicBlock>(switch_instr->getOperand(i + 1));
+            FsmState* successor_state = bb_firs_state[successor_bb];
+
+            last_state->addTransition(successor_state, value);
+        }
+
+        default_branch_bb = dyn_cast<BasicBlock>(switch_instr->getDefaultDest());
+    } else if (auto* branch_instr = dyn_cast<BranchInst>(term_instr)) {
+        if (branch_instr->isConditional()) {
+            /* Conditional Branch */
+            default_branch_bb = dyn_cast<BasicBlock>(term_instr->getSuccessor(1));
+
+            auto* successor_bb = dyn_cast<BasicBlock>(branch_instr->getSuccessor(0));
+            FsmState* successor_state = bb_firs_state[successor_bb];
+
+            last_state->addTransition(successor_state);
+        } else {
+            /* Unconditional Branch */
+            default_branch_bb = dyn_cast<BasicBlock>(term_instr->getSuccessor(0));
+        }
+    } else {
+        llvm_unreachable(0);
+    }
+
+    last_state->setDefaultTransition(bb_firs_state[default_branch_bb]);
+}
