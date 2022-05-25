@@ -1,3 +1,4 @@
+#include <llvm/IR/Value.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 
@@ -29,4 +30,16 @@ bool utility::isDummyCall(Instruction& instr) {
             || callee_name == "llvm.dbg.value";
 
     return is_dummy_call_name;
+}
+
+Value* utility::getPointerOperand(Instruction& instr) {
+    if (auto* load_instr = dyn_cast<LoadInst>(&instr)) {
+        return load_instr->getPointerOperand();
+    }
+
+    if (auto* store_instr = dyn_cast<StoreInst>(&instr)) {
+        return store_instr->getPointerOperand();
+    }
+
+    return nullptr;
 }
