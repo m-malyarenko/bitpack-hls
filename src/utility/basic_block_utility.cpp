@@ -9,28 +9,34 @@
 using namespace llvm;
 using namespace bphls;
 
-std::optional<BasicBlock*> utility::isBasicBlockEmpty(BasicBlock& basic_block) {
+bool utility::isBasicBlockEmpty(BasicBlock& basic_block, BasicBlock*& successor) {
     if (basic_block.size() != 1) {
-        return std::nullopt;
+        return false;
     }
 
     auto& firt_basic_block = basic_block.getParent()->front();
     if (&firt_basic_block != &basic_block) {
-        return std::nullopt;
+        return false;
     }
 
     auto* term_instr = basic_block.getTerminator();
-    assert(term_instr);
+    assert(term_instr != nullptr);
 
     if (isa<ReturnInst>(term_instr) || isa<BranchInst>(term_instr)) {
-        return std::nullopt;
+        return false;
     }
 
     if (term_instr->getNumSuccessors() == 1) {
         BasicBlock* succ = dyn_cast<BasicBlock>(term_instr->getSuccessor(0));
-        assert(succ);
-        return succ;
+        assert(succ != nullptr);
+        successor = succ;
+        return true;
     } else {
-        return std::nullopt;
+        return false;
     }
+}
+
+bool utility::isBasicBlockEmpty(BasicBlock& basic_block) {
+    BasicBlock* dummy = nullptr;
+    return isBasicBlockEmpty(basic_block, dummy);
 }

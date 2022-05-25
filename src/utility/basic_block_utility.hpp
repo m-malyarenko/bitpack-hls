@@ -8,7 +8,9 @@ namespace llvm {
     namespace bphls {
         namespace utility {
 
-std::optional<BasicBlock*> isBasicBlockEmpty(BasicBlock& basic_block);
+bool isBasicBlockEmpty(BasicBlock& basic_block, BasicBlock*& successor);
+
+bool isBasicBlockEmpty(BasicBlock& basic_block);
 
         } /* namespace utility */
     } /* namespace bphls */
