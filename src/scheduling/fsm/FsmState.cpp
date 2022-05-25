@@ -13,6 +13,22 @@ FsmState* FsmState::getDefaultTransition() {
     return transition.default_transition;
 }
 
+unsigned int FsmState::getTransitionsNum() {   
+    return transition.states.size() + 1;
+}
+
+Value* FsmState::getTransitionVariable() {
+    return transition.variable;
+}
+
+Value* FsmState::getTransitionValue(unsigned int trans) {
+    return transition.values[trans];
+}
+
+FsmState* FsmState::getTransitionState(unsigned int state) {
+    return transition.states[state];
+}
+
 void FsmState::setName(std::string new_name) {
     name = new_name;
 }

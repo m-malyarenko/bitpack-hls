@@ -2,6 +2,7 @@
 #define __SCHEDULING_SDC_SCHEDULER_HPP__
 
 #include <map>
+#include <utility>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
@@ -17,38 +18,42 @@ namespace llvm {
 
 class SdcScheduler : public Scheduler {
 public:
-    SdcScheduler();
+    SdcScheduler(Function& function, Dag& dag);
+
+    SchedulerMapping& schedule() override;
 
     ~SdcScheduler() {};
 
-    SchedulerMapping* schedule(Function& function, Dag& dag) override;
-
 private:
+    Function& function;
+    Dag& dag;
+
     unsigned int n_instr;
 
     lprec* lp_solver;
 
-    std::map<InstructionNode*, unsigned int> instr_start_lpvar_lookup;
-    std::map<InstructionNode*, unsigned int> instr_end_lpvar_lookup;
+    SchedulerMapping mapping;
+
+    std::map<InstructionNode*, std::pair<unsigned int, unsigned int>> instr_node_lp_var_lookup;
 
     enum Axap {
         Asap,
         Alap,
     };
 
-    unsigned int createLpVariables(Function& function, Dag& dag);
+    unsigned int createLpVariables();
 
-    void addMulticycleConstraints(Function& function, Dag& dag);
+    void addMulticycleConstraints();
 
-    void addDependencyConstraints(Function& function, Dag& dag);
+    void addDependencyConstraints();
 
-    void addTimingConstraints(Function& function, Dag& dag);
+    void addTimingConstraints();
 
-    void addAlapConstraints(Function& function, Dag& dag);
+    void addAlapConstraints();
 
-    void addResourseConstraint(Function& function, Dag& dag, unsigned int opcode, unsigned int constraint);
+    void addResourseConstraint(unsigned int opcode, unsigned int constraint);
 
-    void scheduleResourseConstrained(Function& function, Dag& dag);
+    void scheduleResourseConstrained();
 
     void scheduleAxap(Axap axap);
 
@@ -56,7 +61,11 @@ private:
 
     void scheduleAlap();
 
-    SchedulerMapping* mapSchedule(Function& function, Dag& dag);
+    void mapSchedule();
+
+#ifndef NDEBUG
+    void printLp();
+#endif
 };
 
     } /* namespace bphls */ 

@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <map>
 #include <vector>
 
@@ -19,44 +21,62 @@
 using namespace llvm;
 using namespace bphls;
 
-Fsm* SchedulerMapping::createFSM(Function& function, Dag& dag) {
-    Fsm* fsm = new Fsm();
+SchedulerMapping::SchedulerMapping(Function& function, Dag& dag)
+    : function(function),
+      dag(dag) {} 
 
-    FsmState* wait_state = fsm->createState();
+unsigned int SchedulerMapping::getState(InstructionNode* instr) {
+    return instr_state_lookup[instr];
+}
+
+void SchedulerMapping::setState(InstructionNode* instr, unsigned int state) {
+    instr_state_lookup[instr] = state;
+}
+
+unsigned int SchedulerMapping::getBasicBlockStatesNum(BasicBlock* basic_block) {
+    return bb_states_num_lookup[basic_block];
+}
+
+void SchedulerMapping::setBasicBlockStatesNum(BasicBlock* basic_block, unsigned int state) {
+    bb_states_num_lookup[basic_block] = state;
+}
+
+Fsm& SchedulerMapping::createFsm() {
+    FsmState* wait_state = fsm.createState();
     wait_state->setDefaultTransition(wait_state);
 
     std::map<BasicBlock*, unsigned int> bb_ids;
     std::map<BasicBlock*, FsmState*> bb_first_states;
     std::map<BasicBlock*, unsigned int> state_index;
 
-    unsigned int n_basic_block = 0;
+    unsigned int bb_count = 0;
     for (auto& basic_block : function) {
-        bb_ids[&basic_block] = n_basic_block;
+        bb_ids[&basic_block] = bb_count;
 
         if (utility::isBasicBlockEmpty(basic_block)) {
             continue;
         }
 
-        FsmState* state = fsm->createState();
+        FsmState* state = fsm.createState();
 
         state->setBasicBlock(&basic_block);
         bb_first_states[&basic_block] = state;
         state_index[&basic_block] = 0;
 
-        n_basic_block++;
+        bb_count++;
     }
 
     {
         auto& first_bb = function.front();
-        auto first_bb_succ = utility::isBasicBlockEmpty(function.front());
+        BasicBlock* first_bb_succ = nullptr;
 
-        if (first_bb_succ.has_value()) {
+        if (utility::isBasicBlockEmpty(first_bb, first_bb_succ)) {
             wait_state->setTerminatingFlag(true);
             wait_state->setBasicBlock(&first_bb);
         
-            assert(bb_first_states.find(first_bb_succ.value()) != bb_first_states.end());
+            assert(bb_first_states.find(first_bb_succ) != bb_first_states.end());
         
-            wait_state->addTransition(bb_first_states[first_bb_succ.value()]);
+            wait_state->addTransition(bb_first_states[first_bb_succ]);
         } else {
             assert(bb_first_states.find(&first_bb) != bb_first_states.end());
             wait_state->addTransition(bb_first_states[&first_bb]);
@@ -64,77 +84,78 @@ Fsm* SchedulerMapping::createFSM(Function& function, Dag& dag) {
     }
 
     for (auto& basic_block : function) {
-        std::map<unsigned int, FsmState*> states_order;
+        std::map<unsigned int, FsmState*> bb_states_order;
 
-        if (!utility::isBasicBlockEmpty(basic_block).has_value()) {
+        if (utility::isBasicBlockEmpty(basic_block)) {
             continue;
         }
 
-        states_order[0] = bb_first_states[&basic_block];
-        unsigned int last_state = getNumStates(&basic_block);
+        bb_states_order[0] = bb_first_states[&basic_block];
+        unsigned int last_state = getBasicBlockStatesNum(&basic_block);
 
-        assert(!states_order.empty());
+        assert(!bb_states_order.empty());
 
         for (unsigned int i = 1; i <= last_state; i++) {
-            states_order[i] = fsm->createState(states_order[i - 1]);
+            bb_states_order[i] = fsm.createState(bb_states_order[i - 1]);
         }
 
         for (auto& instr : basic_block) {
             unsigned int state_order = getState(&dag.getNode(instr));
-            states_order[state_order]->pushInstruction(&instr);
+            bb_states_order[state_order]->pushInstruction(&instr);
 
             unsigned int delay_state = Scheduler::getInstructionCycles(instr);
 
             if (delay_state == 0) {
-                fsm->setEndState(&instr, states_order[state_order]);
+                fsm.setEndState(&instr, bb_states_order[state_order]);
                 continue;
             }
 
             delay_state += state_order;
             if (delay_state > last_state) {
                 for (unsigned int i = last_state + 1; i <= delay_state; i++) {
-                    states_order[i] = fsm->createState(states_order[i - 1]);
+                    bb_states_order[i] = fsm.createState(bb_states_order[i - 1]);
                 }
                 last_state = delay_state;
             }
 
-            fsm->setEndState(&instr, states_order[delay_state]);
+            fsm.setEndState(&instr, bb_states_order[delay_state]);
         }
 
         setFsmStateTransitions(
-            states_order[last_state],
+            bb_states_order[last_state],
             wait_state,
             basic_block.getTerminator(),
             bb_first_states
         );
 
-        states_order[last_state]->setBasicBlock(&basic_block);
-
         for (unsigned int i = 0; i < last_state; i++) {
-            assert(states_order.find(i) != states_order.end());
+            assert(bb_states_order.find(i) != bb_states_order.end());
 
-            FsmState* state = states_order[i];
+            FsmState* state = bb_states_order[i];
             state->setBasicBlock(&basic_block);
-            state->setDefaultTransition(states_order[i + 1]);
+            state->setDefaultTransition(bb_states_order[i + 1]);
         }
+
+        bb_states_order[last_state]->setBasicBlock(&basic_block);
     }
 
-    for (auto& state : fsm->states()) {
-        if (state.getBasicBlock() == nullptr) {
-            assert(&state == wait_state);
+    for (auto* state : fsm.states()) {
+        if (state->getBasicBlock() == nullptr) {
+            assert(state == wait_state);
             continue;
         }
 
-        state_index[state.getBasicBlock()] += 1;
+        state_index[state->getBasicBlock()] += 1;
 
         std::string new_state_name =
-            "BPHLS_F_" + function.getName().str() + "_BB_" + std::to_string(bb_ids[state.getBasicBlock()]);
+            "BPHLS_F_" + function.getName().str() + "_BB_" + std::to_string(bb_ids[state->getBasicBlock()]);
 
-        state.setName(new_state_name);
+        state->setName(new_state_name);
     }
 
-    if (!fsm->states().empty()) {
-        fsm->states().begin()->setName("LEGUP");
+    if (!fsm.states().empty()) {
+        auto* state = *(fsm.states().begin());
+        state->setName("BPHLS");
     }
 
     return fsm;

@@ -14,7 +14,7 @@ class Scheduler {
 public:
     virtual ~Scheduler() {};
 
-    virtual SchedulerMapping* schedule(Function& function, Dag& dag) = 0;
+    virtual SchedulerMapping& schedule() = 0;
 
     static unsigned int getInstructionCycles(Instruction& instr);
 };

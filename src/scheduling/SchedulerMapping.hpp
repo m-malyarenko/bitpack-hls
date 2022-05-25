@@ -1,12 +1,12 @@
 #ifndef __SCHEDULING_SCHEDULER_MAPPING_HPP__
 #define __SCHEDULING_SCHEDULER_MAPPING_HPP__
 
+#include <map>
+
 #include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
-
-#include <llvm/ADT/DenseMap.h>
 
 #include "InstructionNode.hpp"
 #include "Dag.hpp"
@@ -18,19 +18,28 @@ namespace llvm {
 
 class SchedulerMapping {
 public:
-    unsigned int getState(InstructionNode* instr) { return map[instr]; }
+    SchedulerMapping(Function& function, Dag& dag);
 
-    void setState(InstructionNode* instr, unsigned int state) { map[instr] = state; }
+    unsigned int getState(InstructionNode* instr);
 
-    unsigned int getNumStates(BasicBlock* bb) { return state_num[bb]; }
+    void setState(InstructionNode* instr, unsigned int state);
 
-    void setNumStates(BasicBlock* bb, unsigned int state) { state_num[bb] = state; }
+    unsigned int getBasicBlockStatesNum(BasicBlock* basic_block);
 
-    Fsm* createFSM(Function& function, Dag& dag);
+    void setBasicBlockStatesNum(BasicBlock* basic_block, unsigned int state);
+
+    Fsm& createFsm();
+
+    std::map<InstructionNode*, unsigned int>& getMap() { return instr_state_lookup; }
 
 private:
-    DenseMap<InstructionNode*, unsigned int> map;
-    DenseMap<BasicBlock*, unsigned int> state_num;
+    Function& function;
+    Dag& dag;
+
+    Fsm fsm;
+
+    std::map<InstructionNode*, unsigned int> instr_state_lookup;
+    std::map<BasicBlock*, unsigned int> bb_states_num_lookup;
 
     void setFsmStateTransitions(FsmState* last_state,
                                 FsmState* wait_state,

@@ -1,4 +1,9 @@
+#include <list>
+#include <algorithm>
 #include <string>
+
+#include "../../utility/DotGraph.hpp"
+#include "../../utility/transition_utility.hpp"
 
 #include "Fsm.hpp"
 
@@ -9,17 +14,12 @@ FsmState* Fsm::createState(FsmState* after, std::string name) {
     FsmState* state = new FsmState(this);
 
     if (after != nullptr) {
-        // C++...
-        StateIterator iter;
-        for (iter = states().begin(); iter != states().end(); iter++) {
-            auto* node_data_ptr = &(*iter);
+        auto after_iter = std::find(states().begin(), states().end(), after);
 
-            if (node_data_ptr == after) {
-                break;
-            }
-        }
-        // FIXME iter may be end()
-        state_list.insertAfter(iter, state);
+        assert(after_iter != states().end());
+
+        after_iter++;
+        state_list.insert(after_iter, state);
     } else {
         state_list.push_back(state);
     }
@@ -34,4 +34,58 @@ void Fsm::setStartState(Instruction* instr, FsmState* state) {
 
 void Fsm::setEndState(Instruction* instr, FsmState* state) {
     end_state_lookup[instr] = state;
+}
+
+void printNodeLabel(raw_ostream& out, FsmState* state) {
+    out << state->getName() << "\\n";
+
+    for (auto* instr : state->instructions()) {
+        out << instr->getOpcodeName() << "\\n";
+    }
+}
+
+void Fsm::exportDot(formatted_raw_ostream& out) {
+    dotGraph<FsmState> graph(out, printNodeLabel);
+    graph.setLabelLimit(100);
+
+    for (auto* state : this->states()) {
+
+        assert(state->getDefaultTransition());
+        const unsigned int trans_num = state->getTransitionsNum(); 
+
+        if (trans_num == 1) {
+            graph.connectDot(out, state, state->getDefaultTransition(), "");
+        } else if (trans_num == 2) {
+            graph.connectDot(
+                out,
+                state,
+                state->getTransitionState(0),
+                "label=\"" + utility::getTransitionOperands(state) + "\""
+            );
+
+            graph.connectDot(
+                out,
+                state,
+                state->getDefaultTransition(),
+                "label=\"~" + utility::getTransitionOperands(state) + "\""
+            );
+        } else {
+            assert(trans_num > 0);
+
+            for (unsigned int i = 0; i != (trans_num - 1); i++) {
+                std::string label =
+                    "label=\"" + utility::getTransitionOperands(state) + " == " +
+                    state->getTransitionValue(i)->getName().str() + "\"";
+
+                graph.connectDot(
+                    out,
+                    state,
+                    state->getTransitionState(i),
+                    label
+                );
+            }
+
+            graph.connectDot(out, state, state->getDefaultTransition(), "Default");
+        }
+    }
 }

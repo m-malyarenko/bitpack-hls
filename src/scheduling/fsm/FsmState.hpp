@@ -37,6 +37,11 @@ public:
     };
 
     typedef std::list<Instruction*> InstructionList;
+    typedef InstructionList::iterator InstructionListIterator;
+
+    iterator_range<InstructionListIterator> instructions() {
+        return make_range(instr_list.begin(), instr_list.end());
+    }
 
     FsmState(Fsm* parent)
         : parent(parent),
@@ -53,7 +58,15 @@ public:
 
     void setTransitionVariable(Value* var);
 
+    Value* getTransitionVariable();
+
+    Value* getTransitionValue(unsigned int trans);
+
+    FsmState* getTransitionState(unsigned int state);
+
     FsmState* getDefaultTransition();
+
+    unsigned int getTransitionsNum();
 
     void setName(std::string new_name);
 
