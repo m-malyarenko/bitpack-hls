@@ -24,3 +24,11 @@ void  InstructionNode::addDependence(InstructionNode& dep_instr_node) {
 void InstructionNode::addUse(InstructionNode& use_instr_node) {
     users_list.push_back(&use_instr_node);
 }
+
+void InstructionNode::addMemoryDependence(InstructionNode& dep_instr_node) {
+    memory_dependencies_list.push_back(&dep_instr_node);
+}
+
+void InstructionNode::addMemoryUse(InstructionNode& use_instr_node) {
+    memory_users_list.push_back(&use_instr_node);
+}

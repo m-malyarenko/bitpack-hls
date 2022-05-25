@@ -21,6 +21,10 @@ public:
 
     void addUse(InstructionNode& use_instr_node);
 
+    void addMemoryDependence(InstructionNode& dep_instr_node);
+
+    void addMemoryUse(InstructionNode& use_instr_node);
+
     Instruction& getInstruction() { return instruction; };
 
     typedef std::vector<InstructionNode*>::iterator InstructionNodeIterator;
@@ -33,6 +37,14 @@ public:
         return make_range(users_list.begin(), users_list.end());
     }
 
+    iterator_range<InstructionNodeIterator> memory_dependencies() {
+        return make_range(memory_dependencies_list.begin(), memory_dependencies_list.end());
+    }
+
+    iterator_range<InstructionNodeIterator> memory_users() {
+        return make_range(memory_users_list.begin(), memory_users_list.end());
+    }
+
 private:
     Instruction& instruction;
 
@@ -40,6 +52,9 @@ private:
 
     std::vector<InstructionNode*> dependencies_list;
     std::vector<InstructionNode*> users_list;
+
+    std::vector<InstructionNode*> memory_dependencies_list;
+    std::vector<InstructionNode*> memory_users_list;
 };
 
     } /* namespace bphls */ 
