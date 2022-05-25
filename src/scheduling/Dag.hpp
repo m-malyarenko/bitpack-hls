@@ -1,9 +1,9 @@
 #ifndef __SCHEDULING_SCHEDULER_DAG_HPP__
 #define __SCHEDULING_SCHEDULER_DAG_HPP__
 
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/ADT/DenseMap.h>
+#include <map>
 
+#include <llvm/IR/Function.h>
 #include <llvm/Support/FormattedStream.h>
 
 #include "InstructionNode.hpp"
@@ -13,7 +13,7 @@ namespace llvm {
 
 class Dag {
 public:
-    Dag(BasicBlock& basic_block);
+    Dag(Function& function);
 
     ~Dag();
 
@@ -22,15 +22,13 @@ public:
     InstructionNode& getNode(Instruction& instr);
 
 private:
-    DenseMap<Instruction*, InstructionNode*> instr_node_lookup;
+    std::map<Instruction*, InstructionNode*> instr_node_lookup;
 
-    bool create(BasicBlock& basic_block);
+    bool create(Function& function);
 
     void insertInstruction(Instruction& instr);
 
     void constructDependencies(Instruction& instr);
-
-    bool hasAliasDependency(Instruction& instr_a, Instruction& instr_b);
 };
 
     } /* namespace bphls */ 

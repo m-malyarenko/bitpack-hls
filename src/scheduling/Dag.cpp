@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include <llvm/IR/Function.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -18,8 +19,8 @@ extern llvm::bphls::hardware::HardwareConstraints* constraints;
 using namespace llvm;
 using namespace bphls;
 
-Dag::Dag(BasicBlock& basic_block) {
-    create(basic_block);
+Dag::Dag(Function& function) {
+    create(function);
 };
 
 Dag::~Dag() {
@@ -28,14 +29,17 @@ Dag::~Dag() {
     }
 }
 
-bool Dag::create(BasicBlock& basic_block) {
-    for (auto& instr : basic_block) {
-        insertInstruction(instr);
+bool Dag::create(Function& function) {
+    for (auto& basic_block : function) {
+        for (auto& instr : basic_block) {
+            insertInstruction(instr);
+        }
     }
 
-    for (auto& instr : basic_block) {
-        std::cout << instr.getOpcodeName() << std::endl;
-        constructDependencies(instr);
+    for (auto& basic_block : function) {
+        for (auto& instr : basic_block) {
+            constructDependencies(instr);
+        }
     }
 
     return true;
@@ -46,13 +50,13 @@ InstructionNode& Dag::getNode(Instruction& instr) {
 }
 
 void Dag::insertInstruction(Instruction& instr) {
-    InstructionNode* instr_node = new InstructionNode(instr); 
+    InstructionNode* instr_node = new InstructionNode(instr);
     instr_node_lookup[&instr] = instr_node;
 
-    assert(constraints->instr_impl.count(instr.getOpcode()) != 0);
+    assert(constraints->instr_fu_lookup.count(instr.getOpcode()) != 0);
 
-    const auto opeartion = constraints->instr_impl[instr.getOpcode()];
-    const float crit_delay = opeartion->crit_delay;
+    auto* fu = constraints->instr_fu_lookup[instr.getOpcode()];
+    float crit_delay = fu->crit_delay;
 
     if (crit_delay > constraints->max_delay) {
         instr_node->setMaxDelay();
@@ -90,8 +94,10 @@ void Dag::constructDependencies(Instruction& instr) {
     assert(!(isa<CallInst>(instr) && utility::isDummyCall(instr)));
 
     /* TODO Alias dependencies */
-    /*if (isa<LoadInst>(instr) || isa<StoreInst>(instr)) {
+    if (isa<LoadInst>(instr) || isa<StoreInst>(instr)) {
         auto& basic_block = *instr.getParent();
+
+        auto* instr_addr = utility::getPointerOperand(instr);
 
         for (auto& dep_instr : basic_block) {
             auto& instr_a = dep_instr;
@@ -108,14 +114,16 @@ void Dag::constructDependencies(Instruction& instr) {
                 continue;
             }
 
-        if (hasAliasDependency(instr_a, instr_b)) {
-            auto& dep_instr_node = *instr_node_lookup[&instr_a];
+            auto* dep_instr_addr = utility::getPointerOperand(dep_instr);
 
-            instr_node.addDependence(dep_instr_node);
-            dep_instr_node.addUse(instr_node);
+            if (instr_addr == dep_instr_addr) {
+                auto& dep_instr_node = *instr_node_lookup[&instr_a];
+
+                instr_node.addMemoryDependence(dep_instr_node);
+                dep_instr_node.addMemoryUse(instr_node);
+            }
         }
-        }
-    }*/
+    }
 }
 
 void printNodeLabel(raw_ostream &out, InstructionNode* instr_node) {
@@ -146,12 +154,10 @@ void Dag::exportDot(formatted_raw_ostream& out, BasicBlock& basic_block) {
             }
         }
 
-        // for (InstructionNode::iterator use = op->mem_use_begin(),
-        //                                e = op->mem_use_end();
-        //      use != e; ++use) {
-        //     if (ignoreDummyCalls && isaDummyCall((*use)->getInst()))
-        //         continue;
-        //     graph.connectDot(out, op, *use, label + "color=red");
-        // }
+        for (auto memory_user : instr_node.memory_users()) {
+            if (!utility::isDummyCall(memory_user->getInstruction())) {
+                graph.connectDot(out, &instr_node, memory_user, label + "color=red");
+            }
+        }
     }
 }
