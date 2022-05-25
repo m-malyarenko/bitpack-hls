@@ -20,7 +20,7 @@ public:
     typedef unsigned int InstructionOpcode;
 
     float max_delay;
-    std::map<InstructionOpcode, FunctionalUnit*> instr_impl;
+    std::map<InstructionOpcode, FunctionalUnit*> instr_fu_lookup;
     std::map<FunctionalUnit*, std::optional<unsigned int>> fu_num_constraints;
 
 private:
