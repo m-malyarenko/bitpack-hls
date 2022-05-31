@@ -1,6 +1,9 @@
 #include <stdint.h>
 
-void foo(volatile uint8_t a, volatile uint8_t b, volatile uint16_t c) {
-    volatile uint16_t d = a * b;
-    volatile uint16_t y = c + d;
+uint32_t foo(uint32_t a, uint32_t b, uint32_t c) {
+    uint32_t y_1 = a * b;
+    uint32_t y_2 = c * 7;
+    uint32_t z = y_1 + y_2;
+
+    return z;
 }

@@ -60,6 +60,8 @@ public:
 
     Value* getTransitionVariable();
 
+    void setTransitionSignal(rtl::RtlSignal* signal);
+
     Value* getTransitionValue(unsigned int trans);
 
     FsmState* getTransitionState(unsigned int state);

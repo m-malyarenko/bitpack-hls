@@ -252,7 +252,7 @@ void SdcScheduler::addResourseConstraint(unsigned int opcode, unsigned int const
         lpvar_coeff[0] = 1.0;
         lpvar_coeff[1] = -1.0;
 
-        // FIXME Add variable initiation cycles instead of 1 
+        // TODO Add variable initiation cycles instead of 1 
         add_constraintex(lp_solver, 2, lpvar_coeff, lpvar_col, GE, 1);
     }
 
@@ -284,8 +284,8 @@ void SdcScheduler::scheduleResourseConstrained() {
                 seen_opcodes.insert(instr_opcode);
             }
 
-            auto* fu = constraints->instr_fu_lookup[instr_opcode];
-            auto fu_num_constraint = constraints->fu_num_constraints[fu];
+            auto* fu = constraints->getInstructionFu(instr);
+            auto fu_num_constraint = constraints->getFuNumConstraint(*fu);
 
             if (fu_num_constraint.has_value()) {
                 std::cout << "Adding constraint\n\t OPCODE: " << instr_opcode

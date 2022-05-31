@@ -14,7 +14,7 @@ unsigned int Scheduler::getInstructionCycles(Instruction& instr) {
     case Instruction::Load:
         return 1;
     case Instruction::Mul:
-        return 2;
+        return 0;
     case Instruction::Add:
         return 0;
     default:

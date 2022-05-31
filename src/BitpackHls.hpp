@@ -1,8 +1,12 @@
 #ifndef __BITPACK_HLS_PASS_HPP__
 #define __BITPACK_HLS_PASS_HPP__
 
-#include <llvm/IR/Function.h>
+#include <optional>
+
 #include <llvm/Support/raw_ostream.h>
+
+#include <llvm/IR/Function.h>   /* Compiler input */
+#include "rtl/RtlModule.hpp"    /* Compiler output */
 
 namespace llvm {
     namespace bphls {
@@ -17,6 +21,7 @@ public:
 
 private:
     Function& function;
+    std::optional<rtl::RtlModule*> rtl_module; 
 };
 
     } /* bphls */

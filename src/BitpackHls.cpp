@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <optional>
 
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FormattedStream.h>
@@ -10,39 +11,78 @@
 #include "scheduling/SdcScheduler.hpp"
 #include "scheduling/SchedulerMapping.hpp"
 #include "scheduling/fsm/Fsm.hpp"
+
+#include "rtl/RtlModule.hpp"
+#include "rtl/RtlGenerator.hpp"
+
+#include "verilog/VerilogWriter.hpp"
+
 #include "BitpackHls.hpp"
 
 using namespace llvm;
 
 bphls::BitpackHls::BitpackHls(Function& function /*, constrains */)
-    : function(function) {}
+    : function(function),
+      rtl_module(std::nullopt) {}
 
 bool bphls::BitpackHls::run() {
-    // std::string hls_output_buffer;
-    // llvm::raw_string_ostream hls_output(hls_output_buffer);
+    std::string out_buffer;
+    raw_string_ostream out_stream(out_buffer);
+    formatted_raw_ostream fmt_out_stream(out_stream);
 
-    auto& basic_block_list = function.getBasicBlockList();
+    Dag dag(function);
 
-    if (basic_block_list.size() != 1) {
-        std::cerr << "Function must contain one basic block" << std::endl;
-        return false;
+    for (auto& basic_block: function) {
+        dag.exportDot(fmt_out_stream, basic_block);
+
+        std::cout << out_stream.str() << std::endl;
     }
 
-    auto& basic_block = basic_block_list.front();
+    SdcScheduler sched(function, dag);
 
-    Dag* dag = new Dag(basic_block);
+    Fsm& fsm = sched.schedule().createFsm();
 
-    Scheduler* scheduler = new SdcScheduler();
+    for (auto* state : fsm.states()) {
+        std::cout << state->getName() << std::endl;
+        // for (unsigned int i = 0; i < state->getTransitionsNum(); i++) {
+        //     std::cout << "#" << i << "\tTransition state " << state->getTransitionState(i)->getName() << std::endl;
+        //     // if (state->getTransitionValue(i) != nullptr) {
+        //     //     std::cout << "#" << i << "\tTransition value " << state->getTransitionValue(i)->getName().str() << std::endl;
+        //     // }
+        // }
+        // std::cout << "\tTransition variable: " << state->getTransitionVariable()->getName().str() << std::endl;
+        // std::cout << "\tDefaul transition " << state->getDefaultTransition()->getName() << std::endl;
 
-    SchedulerMapping* mapping = scheduler->schedule(function, *dag);
+        for (auto* instr : state->instructions()) {
+            std::cout << "\t\t" << instr->getOpcodeName() << std::endl;
+        }
+    }
 
-    Fsm* fsm = mapping->createFSM(function, *dag);
+    rtl::RtlGenerator rtl_gen(function, fsm);
 
-    // std::string out_buffer;
-    // raw_string_ostream out_stream(out_buffer);
-    // formatted_raw_ostream fmt_out_stream(out_stream);
+    rtl_module = &rtl_gen.generate();
 
-    // dag.exportDot(fmt_out_stream, basic_block);
+    std::string hls_output_buffer;
+    llvm::raw_string_ostream hls_output(hls_output_buffer);
+
+    verilog::VerilogWriter verilog_write(hls_output, *rtl_module.value());
+
+    verilog_write.print();
+
+    std::cout << hls_output_buffer << std::endl;
+
+    // auto& map = sched_mapping.getMap();
+
+    // for (auto& instr_node_stage : map) {
+    //     std::cout << instr_node_stage.first->getInstruction().getOpcodeName()
+    //                 << " #" << instr_node_stage.second << std::endl;
+    // }
+
+    // Fsm* fsm = mapping->createFsm(function, *dag);
+
+    // out_buffer.clear();
+
+    // fsm->exportDot(fmt_out_stream);
 
     // std::cout << out_stream.str() << std::endl;
 
@@ -70,12 +110,11 @@ bool bphls::BitpackHls::run() {
     // }
 
     // std::cout << hls_output.str() << std::endl;
-    delete dag;
-    delete scheduler;
-    delete mapping;
-    delete fsm;
+    // delete fsm;
 
     return true;
 }
 
-void bphls::BitpackHls::writeOut(raw_ostream& hls_out) {}
+void bphls::BitpackHls::writeOut(raw_ostream& hls_out) {
+
+}

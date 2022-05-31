@@ -1,0 +1,9 @@
+digraph {
+Node0x5583bdce6f40[label="add"];
+Node0x5583bdce7220[label="mul"];
+Node0x5583bdce7220 -> Node0x5583bdce6f40[label="D: ns L: ",color=blue];
+Node0x5583bdce7060[label="mul"];
+Node0x5583bdce7060 -> Node0x5583bdce6f40[label="D: ns L: ",color=blue];
+Node0x5583bdce6e20[label="ret"];
+Node0x5583bdce6f40 -> Node0x5583bdce6e20[label="D: ns L: ",color=blue];
+}

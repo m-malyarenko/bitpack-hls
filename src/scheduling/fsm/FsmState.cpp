@@ -46,7 +46,15 @@ void FsmState::setTerminatingFlag(bool term_flag) {
 }
 
 void FsmState::setTransitionVariable(Value* var) {
+    assert(var != nullptr);
+
     transition.variable = var;
+}
+
+void FsmState::setTransitionSignal(rtl::RtlSignal* signal) {
+    assert(signal != nullptr);
+
+    transition.signal = signal;
 }
 
 void FsmState::addTransition(FsmState* state, Value* value) {

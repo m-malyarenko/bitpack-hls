@@ -53,10 +53,10 @@ void Dag::insertInstruction(Instruction& instr) {
     InstructionNode* instr_node = new InstructionNode(instr);
     instr_node_lookup[&instr] = instr_node;
 
-    assert(constraints->instr_fu_lookup.count(instr.getOpcode()) != 0);
+    auto* op = constraints->getInstructionOperation(instr);
+    assert(op != nullptr);
 
-    auto* fu = constraints->instr_fu_lookup[instr.getOpcode()];
-    float crit_delay = fu->crit_delay;
+    float crit_delay = op->crit_delay;
 
     if (crit_delay > constraints->max_delay) {
         instr_node->setMaxDelay();

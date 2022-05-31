@@ -32,8 +32,16 @@ void Fsm::setStartState(Instruction* instr, FsmState* state) {
     start_state_lookup[instr] = state;
 }
 
+FsmState* Fsm::getStartState(Instruction* instr) {
+    return start_state_lookup[instr];
+}
+
 void Fsm::setEndState(Instruction* instr, FsmState* state) {
     end_state_lookup[instr] = state;
+}
+
+FsmState* Fsm::getEndState(Instruction* instr) {
+    return end_state_lookup[instr];
 }
 
 void printNodeLabel(raw_ostream& out, FsmState* state) {

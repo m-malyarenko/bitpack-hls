@@ -20,7 +20,11 @@ public:
 
     void setStartState(Instruction* instr, FsmState* state);
 
+    FsmState* getStartState(Instruction* instr);
+
     void setEndState(Instruction* instr, FsmState* state);
+
+    FsmState* getEndState(Instruction* instr);
 
     void exportDot(formatted_raw_ostream& out);
 
