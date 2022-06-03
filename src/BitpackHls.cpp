@@ -52,7 +52,7 @@ bool bphls::BitpackHls::run() {
         // }
         // std::cout << "\tTransition variable: " << state->getTransitionVariable()->getName().str() << std::endl;
         // std::cout << "\tDefaul transition " << state->getDefaultTransition()->getName() << std::endl;
-
+        state->printTransition();
         for (auto* instr : state->instructions()) {
             std::cout << "\t\t" << instr->getOpcodeName() << std::endl;
         }

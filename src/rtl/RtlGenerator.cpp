@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 #include <string>
 #include <map>
@@ -29,13 +30,13 @@ rtl::RtlModule& rtl::RtlGenerator::generate() {
 
     connectRegistersToWires();
 
-#ifndef NDEBUG
-    module.printSignals();
-#endif
-
     // TODO Binding
 
     generateDatapath();
+
+#ifndef NDEBUG
+    module.printSignals();
+#endif
 
     return module;
 }
@@ -44,15 +45,11 @@ void rtl::RtlGenerator::generateDeclaration() {
     ZERO = module.addConstant("0");
     ONE = module.addConstant("1");
 
-    for (auto* state : fsm.states()) {
-        state_signals[state] = module.addParam("state_ph", "ph");
-    }
-
     auto* wait_state = *fsm.states().begin();
 
-    module.addReg("cur_state");
-
     addDefaultPorts();
+
+    setUpFsmControllerStates();
 
     /* Function return value - RTL module output register */
     auto* ret_type = function.getReturnType();
@@ -76,6 +73,23 @@ void rtl::RtlGenerator::generateDeclaration() {
     driveSignalInState(module.find("finish"), ZERO, wait_state);
 }
 
+void rtl::RtlGenerator::setUpFsmControllerStates() {
+    unsigned int n_states = fsm.getStatesNum();
+    unsigned int state_width =
+        static_cast<unsigned int>(std::ceil(std::log2(n_states)));
+
+    module.addReg("cur_state", RtlWidth(state_width));
+
+    unsigned int state_count = 0;
+    for (auto* state : fsm.states()) {
+        auto* state_param = module.addParam(state->getName(), std::to_string(state_count));
+        state_param->setWidth(RtlWidth(state_width));
+
+        state_signals[state] = state_param;
+        state_count++;
+    }
+}
+
 void rtl::RtlGenerator::addDefaultPorts() {
     module.addInputWire("clk");
     module.addInputWire("reset");
@@ -94,11 +108,11 @@ void rtl::RtlGenerator::addInstructionsSignals() {
             auto reg = wire + "_reg";
 
             if (!module.exists(wire)) {
-                module.addWire(wire); // FIXME add wire width
+                module.addWire(wire, RtlWidth(&instr)); // FIXME add wire width
             }
 
             if (!module.exists(reg)) {
-                module.addReg(reg); // FIXME add reg width
+                module.addReg(reg, RtlWidth(&instr)); // FIXME add reg width
             }
         }
     }
@@ -127,13 +141,16 @@ void rtl::RtlGenerator::connectRegistersToWires() {
 }
 
 void rtl::RtlGenerator::generateDatapath() {
-    char indent = '\t';
-
     auto* cur_state = module.find("cur_state");
     assert(cur_state != nullptr);
 
     for (auto* state : fsm.states()) {
         assert(state_signals.count(state) != 0);
+
+        std::cout << "Transition for state: " << state->getName() << std::endl;
+        if (state->getTransitionSignal() != nullptr) {
+            std::cout << "Transition signal: " << state->getTransitionSignal()->getName().value_or("NO") << std:: endl;
+        }
 
         auto* transition_state = module.addOperation(RtlOperation::Eq);
         transition_state->setOperand(0, cur_state);
@@ -171,23 +188,23 @@ void rtl::RtlGenerator::generateStateTransition(RtlSignal* condition, FsmState* 
     /* Conditional branch */
     if (state->getTransitionsNum() == 2) {
         auto* true_branch = module.addOperation(RtlOperation::Eq);
-        true_branch->setOperand(0, nullptr); // FIXME
+        true_branch->setOperand(0, getTransitionOperand(state));
         true_branch->setOperand(1, ONE);
 
         auto* true_condition = module.addOperation(RtlOperation::And);
-        true_branch->setOperand(0, condition); // FIXME
-        true_branch->setOperand(1, true_branch);
+        true_condition->setOperand(0, condition);
+        true_condition->setOperand(1, true_branch);
 
         // TODO PHI Copie
         cur_state->addCondition(true_condition, state_signals[state->getTransitionState(0)]);
 
         auto* false_branch = module.addOperation(RtlOperation::Eq);
-        true_branch->setOperand(0, nullptr); // FIXME
-        true_branch->setOperand(1, ZERO);
+        false_branch->setOperand(0, getTransitionOperand(state));
+        false_branch->setOperand(1, ZERO);
 
         auto* false_condition = module.addOperation(RtlOperation::And);
-        true_branch->setOperand(0, condition); // FIXME
-        true_branch->setOperand(1, false_branch);
+        false_condition->setOperand(0, condition);
+        false_condition->setOperand(1, false_branch);
 
         // TODO PHI Copie
         cur_state->addCondition(false_condition, state_signals[state->getDefaultTransition()]);
@@ -273,8 +290,7 @@ rtl::RtlSignal* rtl::RtlGenerator::getOperandSignal(FsmState* state, Value* op) 
                 const_val = "-";
             }
 
-            const_val +=
-                std::to_string(const_int->getBitWidth()) + "'d" + const_val;
+            const_val += const_int_val_str;
         } else {
             // TODO Add more constant values
             llvm_unreachable("Constant value unsupported");
@@ -302,6 +318,16 @@ rtl::RtlSignal* rtl::RtlGenerator::getOperandSignal(FsmState* state, Value* op) 
         // TODO Тут может быть важное место, где выбирается провод или регистр
 
         return signal;
+    }
+}
+
+rtl::RtlSignal* rtl::RtlGenerator::getTransitionOperand(FsmState* state) {
+    auto* operation = state->getTransitionSignal();
+
+    if (operation != nullptr) {
+        return operation;
+    } else {
+        return getOperandSignal(state, state->getTransitionVariable());
     }
 }
 
@@ -409,6 +435,10 @@ void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
     auto* instr_wire = getInstructionLhsSignal(instr);
     auto* op_0 = getOperandSignal(visit_state, instr->getOperand(0));
     auto* op_1 = getOperandSignal(visit_state, instr->getOperand(1));
+
+    std::cout << "Instr wire: " << instr_wire->getName().value_or("NONAME") << std::endl;
+    std::cout << "Op 0: " << op_0->getName().value_or("NONAME") << std::endl;
+    std::cout << "Op 1: " << op_1->getName().value_or("NONAME") << std::endl;
 
     auto* fu = createFu(instr, op_0, op_1);
 

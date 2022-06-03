@@ -28,6 +28,8 @@ public:
 
     std::optional<unsigned char> getLsbIndex();
 
+    bool isSigned();
+
 private:
     std::optional<unsigned char> msb_idx;
     std::optional<unsigned char> lsb_idx;

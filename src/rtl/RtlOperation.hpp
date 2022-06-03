@@ -26,6 +26,7 @@ public:
         Le,     /* <= */
         Gt,     /* > */
         Ge,     /* >= */
+        Not,    /* ~ */
         SExt,   /* Signed extension */
         ZExt,   /* Zero extension */
         Concat, /* Bitwise concatenation */
@@ -41,13 +42,13 @@ public:
 
     void setOperand(unsigned int i, RtlSignal* signal);
 
-    RtlSignal* getOpearnd(unsigned int i);
+    RtlSignal* getOperand(unsigned int i);
 
     void setCastWidth(RtlWidth cast_width);
 
     RtlWidth getCastWidth();
 
-    unsigned int getOpearndsNum();
+    unsigned int getOperandsNum();
 
     Opcode getOpcode();
 

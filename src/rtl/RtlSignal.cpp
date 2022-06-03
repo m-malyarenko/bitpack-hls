@@ -26,8 +26,8 @@ rtl::RtlSignal::RtlSignal(std::optional<std::string> name,
 
 bool rtl::RtlSignal::isRegister() {
     bool is_register =
-        name.has_value()
-            && (name.value() == "reg" || name.value() == "output reg");
+        type.has_value()
+            && (type.value() == "reg" || type.value() == "output reg");
 
     return is_register;
 }

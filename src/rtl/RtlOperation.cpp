@@ -95,11 +95,11 @@ void rtl::RtlOperation::setOperand(unsigned int i, RtlSignal* signal) {
     operands[i] = signal;
 }
 
-rtl::RtlSignal* rtl::RtlOperation::getOpearnd(unsigned int i) {
+rtl::RtlSignal* rtl::RtlOperation::getOperand(unsigned int i) {
     return operands.at(i);
 }
 
-unsigned int rtl::RtlOperation::getOpearndsNum() {
+unsigned int rtl::RtlOperation::getOperandsNum() {
     return operands.size();
 }
 

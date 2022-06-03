@@ -84,8 +84,8 @@ void rtl::NetList::propagateBackwards(RtlSignal* signal) {
     if (signal->isOperation()) {
         auto* operation = static_cast<RtlOperation*>(signal);
 
-        for (unsigned int i = 0; i < operation->getOpearndsNum(); i++) {
-            auto* operand = operation->getOpearnd(i);
+        for (unsigned int i = 0; i < operation->getOperandsNum(); i++) {
+            auto* operand = operation->getOperand(i);
 
             connectAtPin(signal, operand);
             propagateBackwards(operand);

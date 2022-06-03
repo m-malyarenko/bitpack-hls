@@ -60,6 +60,8 @@ public:
 
     Value* getTransitionVariable();
 
+    rtl::RtlSignal* getTransitionSignal();
+
     void setTransitionSignal(rtl::RtlSignal* signal);
 
     Value* getTransitionValue(unsigned int trans);
@@ -77,6 +79,8 @@ public:
     void setBasicBlock(BasicBlock* basic_block);
 
     BasicBlock* getBasicBlock();
+
+    void printTransition();
 
 private:
     InstructionList instr_list;

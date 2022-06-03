@@ -159,7 +159,7 @@ rtl::RtlSignal* rtl::RtlModule::addReg(std::string name, RtlWidth width) {
     if (reg != nullptr) {
         reg->setWidth(width);
     } else {
-        reg = new RtlSignal(name, std::nullopt, "wire", width);
+        reg = new RtlSignal(name, std::nullopt, "reg", width);
         signals.push_back(reg);
     }
 
@@ -264,6 +264,25 @@ void rtl::RtlModule::printSignals() {
     for (auto* operation : operations) {
         auto operation_opcode = operation->getOpcode();
 
-        std::cout << "\t" << operation_opcode << std::endl;
+        std::string opcode_name;
+        switch (operation_opcode) {
+        case RtlOperation::Add:
+            opcode_name = "Add";
+            break;
+        case RtlOperation::And:
+            opcode_name = "And";
+            break;
+        case RtlOperation::Eq:
+            opcode_name = "Eq";
+            break;
+        case RtlOperation::Mul:
+            opcode_name = "Mul";
+            break;       
+        default:
+            break;
+        }
+
+        std::cout << "\t" << opcode_name
+            << " Operands Num: " << operation->getOperandsNum() << std::endl;
     }
 }

@@ -70,3 +70,7 @@ std::optional<unsigned char> rtl::RtlWidth::getMsbIndex() {
 std::optional<unsigned char> rtl::RtlWidth::getLsbIndex() {
     return lsb_idx;
 }
+
+bool rtl::RtlWidth::isSigned() {
+    return is_signed;
+}

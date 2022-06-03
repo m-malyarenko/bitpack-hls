@@ -1,3 +1,8 @@
+#include <iostream>
+#include <string>
+
+#include <llvm/Support/raw_ostream.h>
+
 #include "Fsm.hpp"
 
 #include "FsmState.hpp"
@@ -51,6 +56,10 @@ void FsmState::setTransitionVariable(Value* var) {
     transition.variable = var;
 }
 
+rtl::RtlSignal* FsmState::getTransitionSignal() {
+    return transition.signal;
+}
+
 void FsmState::setTransitionSignal(rtl::RtlSignal* signal) {
     assert(signal != nullptr);
 
@@ -69,4 +78,33 @@ void FsmState::pushInstruction(Instruction* instr) {
 
 BasicBlock* FsmState::getBasicBlock() {
     return basic_block;
+}
+
+void FsmState::printTransition() {
+    std::string out_buffer;
+    llvm::raw_string_ostream out(out_buffer);
+
+    std::cout << "Transition:\n";
+
+    if (transition.variable != 0) {
+        out << transition.variable;
+        std::cout << "\tTransition variable: " << out_buffer << std::endl;
+    }
+    out_buffer.clear();
+
+    std::cout << "\tTransition values: ";
+    for (auto* value : transition.values) {
+        out << value << " ";
+    }
+    std::cout << out_buffer << std::endl;
+    out_buffer.clear();
+
+    std::cout << "\tTransition states:\n";
+    for (auto* state : transition.states) {
+        std::cout << "- \t\t" << state->getName() << std::endl;
+    }
+
+    if (getDefaultTransition() != nullptr) {
+        std::cout << "\tDefault transition state: " << getDefaultTransition()->getName() << std::endl;
+    }
 }

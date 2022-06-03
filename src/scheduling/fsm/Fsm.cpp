@@ -44,6 +44,10 @@ FsmState* Fsm::getEndState(Instruction* instr) {
     return end_state_lookup[instr];
 }
 
+unsigned int Fsm::getStatesNum() {
+    return state_list.size();
+}
+
 void printNodeLabel(raw_ostream& out, FsmState* state) {
     out << state->getName() << "\\n";
 

@@ -62,6 +62,8 @@ private:
 
     void generateDeclaration();
 
+    void setUpFsmControllerStates();
+
     void addDefaultPorts();
 
     void addInstructionsSignals();
@@ -84,6 +86,8 @@ private:
     RtlSignal* createFu(Instruction* instr, RtlSignal* op_0, RtlSignal* op_1);
 
     RtlSignal* getOperandSignal(FsmState* state, Value* op);
+
+    RtlSignal* getTransitionOperand(FsmState* state);
 
     RtlSignal* getInstructionLhsSignal(Instruction* instr);
 

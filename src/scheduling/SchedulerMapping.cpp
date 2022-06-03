@@ -46,8 +46,8 @@ Fsm& SchedulerMapping::createFsm() {
     wait_state->setDefaultTransition(wait_state);
 
     std::map<BasicBlock*, unsigned int> bb_ids;
+    std::map<BasicBlock*, unsigned int> bb_state_ids; // Значение инкрементируется при добавлении нового состояния в бб
     std::map<BasicBlock*, FsmState*> bb_first_states;
-    std::map<BasicBlock*, unsigned int> state_index;
 
     unsigned int bb_count = 0;
     for (auto& basic_block : function) {
@@ -61,7 +61,7 @@ Fsm& SchedulerMapping::createFsm() {
 
         state->setBasicBlock(&basic_block);
         bb_first_states[&basic_block] = state;
-        state_index[&basic_block] = 0;
+        bb_state_ids[&basic_block] = 0;
 
         bb_count++;
     }
@@ -145,12 +145,16 @@ Fsm& SchedulerMapping::createFsm() {
             continue;
         }
 
-        state_index[state->getBasicBlock()] += 1;
+        auto* state_bb = state->getBasicBlock();
 
         std::string new_state_name =
-            "BPHLS_F_" + function.getName().str() + "_BB_" + std::to_string(bb_ids[state->getBasicBlock()]);
+            "BPHLS_F_" + function.getName().str()
+                + "_BB_" + std::to_string(bb_ids[state_bb])
+                + "_S_" + std::to_string(bb_state_ids[state_bb]);
 
         state->setName(new_state_name);
+
+        bb_state_ids[state->getBasicBlock()] += 1;
     }
 
     if (!fsm.states().empty()) {

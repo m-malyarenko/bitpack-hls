@@ -32,6 +32,8 @@ private:
 
     void printSignalDefinition(rtl::RtlSignal* signal);
 
+    void printFsmController(rtl::RtlSignal* signal, bool assign_block);
+
     void printAssignment(rtl::RtlSignal* signal,
                          rtl::RtlSignal* driver,
                          unsigned int width,
@@ -39,7 +41,15 @@ private:
 
     void printValue(rtl::RtlSignal* signal, unsigned int width = 0, bool zext = false);
 
-    void printConditions(rtl::RtlSignal* signal, bool blocking);
+    void printOperator(rtl::RtlOperation* operation, unsigned int width);
+
+    void printConditions(rtl::RtlSignal* signal, bool assign_block);
+
+    void printOpcode(rtl::RtlOperation::Opcode opcode);
+
+    void printCondition(rtl::RtlSignal* signal,
+                        unsigned int condition_idx,
+                        bool assign_block);
 
     void printWidth(rtl::RtlWidth width);
 

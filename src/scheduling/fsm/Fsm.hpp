@@ -26,6 +26,8 @@ public:
 
     FsmState* getEndState(Instruction* instr);
 
+    unsigned int getStatesNum();
+
     void exportDot(formatted_raw_ostream& out);
 
     typedef std::list<FsmState*>::iterator StateIterator;
