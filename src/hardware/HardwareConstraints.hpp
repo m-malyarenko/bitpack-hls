@@ -24,6 +24,8 @@ public:
 
     std::optional<unsigned int> getFuNumConstraint(FunctionalUnit& fu);
 
+    std::map<FunctionalUnit*, std::optional<unsigned int>>& getFuNumConstraints();
+
     ~HardwareConstraints();
 
     float max_delay;
@@ -41,6 +43,16 @@ private:
         unsigned char,  /* Input Width 1 */
         unsigned char   /* Input Width 2 */
     > BinaryOperationDescriptor;
+
+    constexpr BinaryOperationDescriptor
+    bin_op(unsigned int opcode, unsigned char w_0, unsigned char w_1) {
+        return std::make_tuple(opcode, w_0, w_1);
+    }
+
+    constexpr UnaryOperationDescriptor
+    un_op(unsigned int opcode, unsigned char w_0) {
+        return std::make_tuple(opcode, w_0);
+    }
 
     std::map<UnaryOperationDescriptor, FunctionalUnit*> unary_op_fu_lookup;
     std::map<BinaryOperationDescriptor, FunctionalUnit*> binary_op_fu_lookup;

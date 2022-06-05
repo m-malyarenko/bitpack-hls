@@ -9,6 +9,8 @@
 #include "llvm/IR/InstVisitor.h"
 
 #include "../scheduling/fsm/Fsm.hpp"
+#include "../binding/LifetimeAnalysis.hpp"
+#include "../binding/Binding.hpp"
 #include "RtlModule.hpp"
 
 namespace llvm {
@@ -17,7 +19,10 @@ namespace llvm {
 
 class RtlGenerator : public InstVisitor<RtlGenerator> {
 public:
-    RtlGenerator(Function& function, Fsm& fsm);
+    RtlGenerator(llvm::Function& function,
+                 Fsm& fsm,
+                 binding::LifetimeAnalysis& lva,
+                 binding::Binding& binding);
 
     RtlModule& generate();
 
@@ -48,12 +53,15 @@ public:
 private:
     Function& function;
     Fsm& fsm;
+    binding::LifetimeAnalysis& lva;
+    binding::Binding& binding;
 
     RtlModule module;
 
     FsmState* visit_state;
     std::set<Instruction*> visited_instr;
-    std::set<Instruction*> binded_instructions;
+
+    std::map<binding::Binding::FuInstId, std::set<Instruction*>> fu_binding_map;
 
     std::map<FsmState*, RtlSignal*> state_signals;
 
@@ -70,7 +78,13 @@ private:
 
     void connectRegistersToWires();
 
+    void performBinding();
+
+    void createBindingSignals();
+
     void generateDatapath();
+
+    void shareRegisters();
 
     void generateStateTransition(RtlSignal* cond, FsmState* state);
 
@@ -83,7 +97,12 @@ private:
 
     bool isLiveAcrossStates(Value* val, FsmState* state);
 
+    void shareRegistersForFu(std::set<Instruction*> instructions,
+                             std::map<Instruction*, std::set<Instruction*>> independant_instructions);
+
     RtlSignal* createFu(Instruction* instr, RtlSignal* op_0, RtlSignal* op_1);
+
+    RtlSignal* createBindedFuUse(Instruction* instr, RtlSignal* op_0, RtlSignal* op_1);
 
     RtlSignal* getOperandSignal(FsmState* state, Value* op);
 

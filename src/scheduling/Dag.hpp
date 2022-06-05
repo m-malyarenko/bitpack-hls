@@ -2,9 +2,11 @@
 #define __SCHEDULING_SCHEDULER_DAG_HPP__
 
 #include <map>
+#include <vector>
 
 #include <llvm/IR/Function.h>
 #include <llvm/Support/FormattedStream.h>
+#include <llvm/ADT/iterator_range.h>
 
 #include "InstructionNode.hpp"
 
@@ -19,6 +21,8 @@ public:
 
     void exportDot(formatted_raw_ostream& out, BasicBlock& basic_block);
 
+    bool hasNode(Instruction& instr);
+
     InstructionNode& getNode(Instruction& instr);
 
 private:
@@ -29,6 +33,8 @@ private:
     void insertInstruction(Instruction& instr);
 
     void constructDependencies(Instruction& instr);
+
+    void filterInstructions(Function& function);
 };
 
     } /* namespace bphls */ 

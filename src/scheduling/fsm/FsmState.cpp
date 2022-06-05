@@ -50,6 +50,10 @@ void FsmState::setTerminatingFlag(bool term_flag) {
     terminating = term_flag;
 }
 
+bool FsmState::getTerminatingFlag() {
+    return terminating;
+}
+
 void FsmState::setTransitionVariable(Value* var) {
     assert(var != nullptr);
 
@@ -80,31 +84,23 @@ BasicBlock* FsmState::getBasicBlock() {
     return basic_block;
 }
 
-void FsmState::printTransition() {
+void FsmState::printStateInfo() {
     std::string out_buffer;
     llvm::raw_string_ostream out(out_buffer);
 
     std::cout << "Transition:\n";
 
-    if (transition.variable != 0) {
-        out << transition.variable;
-        std::cout << "\tTransition variable: " << out_buffer << std::endl;
-    }
-    out_buffer.clear();
-
-    std::cout << "\tTransition values: ";
-    for (auto* value : transition.values) {
-        out << value << " ";
-    }
-    std::cout << out_buffer << std::endl;
-    out_buffer.clear();
-
     std::cout << "\tTransition states:\n";
     for (auto* state : transition.states) {
-        std::cout << "- \t\t" << state->getName() << std::endl;
+        std::cout << "\t\t-" << state->getName() << std::endl;
     }
 
     if (getDefaultTransition() != nullptr) {
         std::cout << "\tDefault transition state: " << getDefaultTransition()->getName() << std::endl;
+    }
+
+    std::cout << "\tInstructions:\n";
+    for (auto* instr : instructions()) {
+            std::cout << "\t\t-" << instr->getOpcodeName() << std::endl;
     }
 }

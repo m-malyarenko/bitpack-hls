@@ -30,7 +30,6 @@ hardware::FunctionalUnit* hardware::HardwareConstraints::getInstructionFu(Instru
             instr.getOpcode(),
             bw
         );
-        std::cout << instr.getOpcodeName() << " BW_0: " << bw << std::endl;
         return unary_op_fu_lookup[descr];
     }
     case 2:
@@ -42,8 +41,6 @@ hardware::FunctionalUnit* hardware::HardwareConstraints::getInstructionFu(Instru
             bw_0,
             bw_1
         );
-        std::cout << instr.getOpcodeName() << " BW_0: "
-            << bw_0 << " BW_1: " << bw_1 << std::endl;
         return binary_op_fu_lookup[descr];
     }
     default:
@@ -53,6 +50,11 @@ hardware::FunctionalUnit* hardware::HardwareConstraints::getInstructionFu(Instru
 
 std::optional<unsigned int> hardware::HardwareConstraints::getFuNumConstraint(FunctionalUnit& fu) {
     return fu_num_constraints[&fu];
+}
+
+std::map<hardware::FunctionalUnit*, std::optional<unsigned int>>&
+hardware::HardwareConstraints::getFuNumConstraints() {
+    return fu_num_constraints;
 }
 
 hardware::Operation* hardware::HardwareConstraints::getInstructionOperation(Instruction& instr) {
@@ -69,22 +71,41 @@ hardware::HardwareConstraints::HardwareConstraints() {
         {{64, 8}, {64, 16}, {64, 32}, {64, 64}},
     };
 
-    binary_op_fu_lookup[std::make_tuple(Instruction::Add, 32, 32)] = new FunctionalUnit;
+    auto add_32_32 = bin_op(Instruction::Add, 32, 32);
+    auto mul_32_32 = bin_op(Instruction::Mul, 32, 32);
+    auto and_32_32 = bin_op(Instruction::And, 32, 32);
+    auto or_32_32 = bin_op(Instruction::Or, 32, 32);
+    auto cmp_32_32 = bin_op(Instruction::ICmp, 32, 32);
 
-    binary_op_fu_lookup[std::make_tuple(Instruction::Sub, 32, 32)] = new FunctionalUnit;
+    binary_op_fu_lookup[add_32_32] = new FunctionalUnit;
+    binary_op_fu_lookup[mul_32_32] = new FunctionalUnit;
+    binary_op_fu_lookup[and_32_32] = new FunctionalUnit;
+    binary_op_fu_lookup[or_32_32] = new FunctionalUnit;
+    binary_op_fu_lookup[cmp_32_32] = new FunctionalUnit;
 
-    auto* mul_fu = new FunctionalUnit;
-    binary_op_fu_lookup[std::make_tuple(Instruction::Mul, 32, 32)] = mul_fu;
+    fu_num_constraints[binary_op_fu_lookup[add_32_32]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[mul_32_32]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[and_32_32]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[or_32_32]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[cmp_32_32]] = 1;
 
-    fu_num_constraints[mul_fu] = 1;
+    auto add_16_16 = bin_op(Instruction::Add, 16, 16);
+    auto mul_16_16 = bin_op(Instruction::Mul, 16, 16);
+    auto and_16_16 = bin_op(Instruction::And, 16, 16);
+    auto or_16_16 = bin_op(Instruction::Or, 16, 16);
+    auto cmp_16_16 = bin_op(Instruction::ICmp, 16, 16);
 
-    binary_op_fu_lookup[std::make_tuple(Instruction::And, 32, 32)] = new FunctionalUnit;
+    binary_op_fu_lookup[add_16_16] = new FunctionalUnit;
+    binary_op_fu_lookup[mul_16_16] = new FunctionalUnit;
+    binary_op_fu_lookup[and_16_16] = new FunctionalUnit;
+    binary_op_fu_lookup[or_16_16] = new FunctionalUnit;
+    binary_op_fu_lookup[cmp_16_16] = new FunctionalUnit;
 
-    binary_op_fu_lookup[std::make_tuple(Instruction::Or, 32, 32)] = new FunctionalUnit;
-
-    binary_op_fu_lookup[std::make_tuple(Instruction::Xor, 32, 32)] = new FunctionalUnit;
-
-    binary_op_fu_lookup[std::make_tuple(Instruction::ICmp, 32, 32)] = new FunctionalUnit;
+    fu_num_constraints[binary_op_fu_lookup[add_16_16]] = 2;
+    fu_num_constraints[binary_op_fu_lookup[mul_16_16]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[and_16_16]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[or_16_16]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[cmp_16_16]] = 1;
 
 //     InstructionOpcode AddOpCode = (InstructionOpcode) Instruction::BinaryOps::Add;
 //     InstructionOpcode SubOpCode = (InstructionOpcode) Instruction::BinaryOps::Sub;

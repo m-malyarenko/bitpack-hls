@@ -42,11 +42,35 @@ bool Dag::create(Function& function) {
         }
     }
 
+    filterInstructions(function);
+
     return true;
+}
+
+bool Dag::hasNode(Instruction& instr) {
+    return instr_node_lookup.count(&instr) != 0;
 }
 
 InstructionNode& Dag::getNode(Instruction& instr) {
     return *instr_node_lookup[&instr];
+}
+
+void Dag::filterInstructions(Function& function) {
+    /* WARNING Must be called after dependencies construction */
+    std::vector<Instruction*> to_erase;
+
+    for (auto& basic_block : function) {
+        for (auto& instr : basic_block) {
+            if (isa<ZExtInst>(instr) || isa<SExtInst>(instr)) {
+                std::cout << "Filtering: " << instr.getOpcodeName() << std::endl;
+                to_erase.push_back(&instr);
+            }
+        }
+    }
+
+    for (auto* instr : to_erase) {
+        instr->eraseFromParent();
+    }
 }
 
 void Dag::insertInstruction(Instruction& instr) {
@@ -73,14 +97,35 @@ void Dag::constructDependencies(Instruction& instr) {
         return;
     }
 
+    /* Filter insteger extension istructions */
+    if (isa<ZExtInst>(instr) || isa<SExtInst>(instr)) {
+        return;
+    }
+
     /* Register dependencies */
-    for (auto& user : instr.operands()) {
-        Instruction* dep_instr = dyn_cast<Instruction>(user);
+    for (auto& operand : instr.operands()) {
+        Instruction* dep_instr = dyn_cast<Instruction>(operand);
 
         if ((dep_instr == nullptr)
                 || isa<AllocaInst>(dep_instr)
                 || (dep_instr->getParent() != instr.getParent()))
         {
+            continue;
+        }
+
+        /* Remove bit extension instructions */
+        if (isa<ZExtInst>(dep_instr) || isa<SExtInst>(dep_instr)) {
+            auto* before_cast_operand = dep_instr->getOperand(0);
+
+            auto* before_cast_instr = dyn_cast<Instruction>(before_cast_operand);
+            if (before_cast_instr != nullptr) {
+                auto& before_cast_instr_node = *instr_node_lookup[before_cast_instr];
+
+                instr_node.addDependence(before_cast_instr_node);
+                before_cast_instr_node.addUse(instr_node);
+            }
+
+            operand.set(before_cast_operand);
             continue;
         }
 
@@ -141,17 +186,21 @@ void Dag::exportDot(formatted_raw_ostream& out, BasicBlock& basic_block) {
             continue;
         }
 
-        std::string label = "label=\"D: ns L: \",";
+        auto width = instr.getType()->getPrimitiveSizeInBits();
+        auto label = "label=\"W: " + std::to_string(width) + "\",";
 
-        for (auto user : instr.users()) {
-            if (Instruction* child = dyn_cast<Instruction>(user)) {
+        for (auto* user_val : instr.users()) {
+            // auto* user_instr = &user_node->getInstruction();
 
-                if (utility::isDummyCall(*child)) {
+            if (Instruction* dep_instr = dyn_cast<Instruction>(user_val)) {
+
+                if (utility::isDummyCall(*dep_instr)) {
                     continue;
                 }
 
-                graph.connectDot(out, &instr_node, instr_node_lookup[child], label + "color=blue");
-            }
+                auto* dep_instr_node = instr_node_lookup[dep_instr];
+                graph.connectDot(out, &instr_node, dep_instr_node, label + "color=blue");
+            }   
         }
 
         for (auto memory_user : instr_node.memory_users()) {

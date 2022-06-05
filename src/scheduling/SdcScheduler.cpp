@@ -287,11 +287,44 @@ void SdcScheduler::scheduleResourseConstrained() {
             auto* fu = constraints->getInstructionFu(instr);
             auto fu_num_constraint = constraints->getFuNumConstraint(*fu);
 
+            auto n_operands = instr.getNumOperands();
+            unsigned int bw_0 = 0;
+            unsigned int bw_1 = 0;;
+
+            if (n_operands >= 1) {
+                bw_0 = instr.getOperand(0)->getType()->getPrimitiveSizeInBits();
+            }
+            
+            if (n_operands >= 2) {
+                bw_1 = instr.getOperand(1)->getType()->getPrimitiveSizeInBits();
+            }
+
             if (fu_num_constraint.has_value()) {
-                std::cout << "Adding constraint\n\t OPCODE: " << instr_opcode
-                    << " FU number: " << fu_num_constraint.value() << std::endl;
+                std::cout << "Adding constraint\n\tOPCODE: " << instr.getOpcodeName();
+
+                if (n_operands >= 1) {
+                    std::cout << " W0: " << bw_0;
+                }
+
+                if (n_operands >= 2) {
+                    std::cout << " W1: " << bw_1;
+                }
+
+                std::cout << " FU number: " << fu_num_constraint.value() << std::endl;
 
                 addResourseConstraint(instr_opcode, fu_num_constraint.value());
+            } else {
+                std::cout << "No constraints\n\tOPCODE: " << instr.getOpcodeName();
+
+                if (n_operands >= 1) {
+                    std::cout << " W0: " << bw_0;
+                }
+
+                if (n_operands >= 2) {
+                    std::cout << " W1: " << bw_1;
+                }
+
+                std::cout << std::endl;
             }
         }
     }

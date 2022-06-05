@@ -166,6 +166,7 @@ void verilog::VerilogWriter::printSignalDefinition(rtl::RtlSignal* signal) {
             printConditions(signal, is_block_assign);
         }
     }
+    // FIXME Перечень условий начинается с if else
 
     out << "end\n\n";
 

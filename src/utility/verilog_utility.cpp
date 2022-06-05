@@ -41,8 +41,7 @@ std::string utility::getVerilogName(Value* val) {
         name = "arg_" + name;
     }
 
-   std::string forbidden_chars = "%/.@#'`";
-
+    static std::string forbidden_chars = "%/.@#'`";
     for (char c : forbidden_chars) {
         name.erase (std::remove(name.begin(), name.end(), c), name.end());
     }
@@ -50,6 +49,34 @@ std::string utility::getVerilogName(Value* val) {
     return name;
 
     // TODO Unique names tracing
+}
+
+std::string utility::getFuInstVerilogName(Instruction* instr, unsigned int idx) {
+    auto* basic_block = instr->getParent();
+    assert(basic_block != nullptr);
+
+    auto basic_block_label = getLabel(basic_block);
+    auto function_label = basic_block->getParent()->getName().str();
+    auto opcode_name = instr->getOpcodeName();
+    auto op_0_w = std::to_string(instr->getOperand(0)->getType()->getPrimitiveSizeInBits());
+
+    auto name =
+        function_label + "_" + basic_block_label
+            + "_" + opcode_name + "_" + op_0_w;
+
+    if (instr->isBinaryOp()) {
+        auto op_1_w = std::to_string(instr->getOperand(1)->getType()->getPrimitiveSizeInBits());
+        name += "_" + op_1_w;
+    }
+
+    name += "_" + std::to_string(idx);
+
+    static std::string forbidden_chars = "%/.@#'`";
+    for (char c : forbidden_chars) {
+        name.erase (std::remove(name.begin(), name.end(), c), name.end());
+    }
+
+    return name;
 }
 
 std::string utility::getLabel(Value* val) {

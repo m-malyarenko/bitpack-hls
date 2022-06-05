@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <optional>
 
@@ -14,6 +15,9 @@
 
 #include "rtl/RtlModule.hpp"
 #include "rtl/RtlGenerator.hpp"
+
+#include "binding/LifetimeAnalysis.hpp"
+#include "binding/Binding.hpp"
 
 #include "verilog/VerilogWriter.hpp"
 
@@ -35,7 +39,8 @@ bool bphls::BitpackHls::run() {
     for (auto& basic_block: function) {
         dag.exportDot(fmt_out_stream, basic_block);
 
-        std::cout << out_stream.str() << std::endl;
+        std::ofstream file_out("./hls/out/dag.dot");
+        file_out << out_buffer;
     }
 
     SdcScheduler sched(function, dag);
@@ -44,21 +49,15 @@ bool bphls::BitpackHls::run() {
 
     for (auto* state : fsm.states()) {
         std::cout << state->getName() << std::endl;
-        // for (unsigned int i = 0; i < state->getTransitionsNum(); i++) {
-        //     std::cout << "#" << i << "\tTransition state " << state->getTransitionState(i)->getName() << std::endl;
-        //     // if (state->getTransitionValue(i) != nullptr) {
-        //     //     std::cout << "#" << i << "\tTransition value " << state->getTransitionValue(i)->getName().str() << std::endl;
-        //     // }
-        // }
-        // std::cout << "\tTransition variable: " << state->getTransitionVariable()->getName().str() << std::endl;
-        // std::cout << "\tDefaul transition " << state->getDefaultTransition()->getName() << std::endl;
-        state->printTransition();
-        for (auto* instr : state->instructions()) {
-            std::cout << "\t\t" << instr->getOpcodeName() << std::endl;
-        }
+        state->printStateInfo();
     }
 
-    rtl::RtlGenerator rtl_gen(function, fsm);
+    binding::LifetimeAnalysis lva(function);
+    lva.analize();
+
+    binding::Binding binding(fsm, lva);
+
+    rtl::RtlGenerator rtl_gen(function, fsm, lva, binding);
 
     rtl_module = &rtl_gen.generate();
 
@@ -69,48 +68,10 @@ bool bphls::BitpackHls::run() {
 
     verilog_write.print();
 
-    std::cout << hls_output_buffer << std::endl;
-
-    // auto& map = sched_mapping.getMap();
-
-    // for (auto& instr_node_stage : map) {
-    //     std::cout << instr_node_stage.first->getInstruction().getOpcodeName()
-    //                 << " #" << instr_node_stage.second << std::endl;
-    // }
-
-    // Fsm* fsm = mapping->createFsm(function, *dag);
-
-    // out_buffer.clear();
-
-    // fsm->exportDot(fmt_out_stream);
-
-    // std::cout << out_stream.str() << std::endl;
-
-    // for (auto& instr : bb) {
-    //     hls_output << instr.getOpcodeName() << "\n\t";
-
-    //     std::size_t oper_num = instr.getNumOperands();
-
-    //     for (std::size_t i = 0; i < oper_num; i++) {
-    //         auto oper = instr.getOperand(i);
-    //         auto type = oper->getType();
-
-    //         auto int_type = llvm::dyn_cast<llvm::IntegerType>(type);
-
-    //         if (int_type != nullptr) {
-    //             hls_output << *int_type
-    //                         << " Bitwidth: " << int_type->getBitWidth()
-    //                         << "\n\t";
-    //         } else {
-    //             hls_output << *type << "\n\t";
-    //         }
-    //     }
-
-    //     hls_output << "\n";
-    // }
-
-    // std::cout << hls_output.str() << std::endl;
-    // delete fsm;
+    {
+        std::ofstream file_out("./hls/out/" + function.getName().str() + ".v");
+        file_out << hls_output_buffer;
+    }
 
     return true;
 }

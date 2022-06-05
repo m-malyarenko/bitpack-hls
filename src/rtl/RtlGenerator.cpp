@@ -13,14 +13,21 @@
 #include "../utility/instruction_utility.hpp"
 #include "../scheduling/Scheduler.hpp"
 #include "../scheduling/fsm/Fsm.hpp"
+#include "../binding/Binding.hpp"
+#include "../binding/LifetimeAnalysis.hpp"
 #include "RtlGenerator.hpp"
 
 using namespace llvm;
 using namespace bphls;
 
-rtl::RtlGenerator::RtlGenerator(Function& function, Fsm& fsm)
+rtl::RtlGenerator::RtlGenerator(llvm::Function& function,
+                                Fsm& fsm,
+                                binding::LifetimeAnalysis& lva,
+                                binding::Binding& binding)
     : function(function),
       fsm(fsm),
+      lva(lva),
+      binding(binding),
       module(function.getName().str()) {}
 
 rtl::RtlModule& rtl::RtlGenerator::generate() {
@@ -30,9 +37,13 @@ rtl::RtlModule& rtl::RtlGenerator::generate() {
 
     connectRegistersToWires();
 
-    // TODO Binding
+    performBinding();
+
+    createBindingSignals();
 
     generateDatapath();
+
+    shareRegisters();
 
 #ifndef NDEBUG
     module.printSignals();
@@ -140,6 +151,43 @@ void rtl::RtlGenerator::connectRegistersToWires() {
     }
 }
 
+void rtl::RtlGenerator::performBinding() {
+    binding.assignInstructions();
+    
+    for (auto& bind_map : binding.iter_binding()) {
+        fu_binding_map[bind_map.second].insert(bind_map.first); 
+    }
+}
+
+void rtl::RtlGenerator::createBindingSignals() {
+    for (auto& instr_fu : binding.iter_binding()) {
+        auto* instr = instr_fu.first;
+        auto& fu_inst = instr_fu.second;
+
+        auto fu_signal = utility::getFuInstVerilogName(instr, fu_inst.second);
+
+        if (module.exists(fu_signal)) {
+            continue;
+        }
+
+        RtlSignal* fu_operation = nullptr;
+
+        auto* op0 =
+            module.addWire(fu_signal + "_op0", RtlWidth(instr->getOperand(0)));
+        
+        if (instr->isBinaryOp()) {
+            auto* op1 =
+                module.addWire(fu_signal + "_op1", RtlWidth(instr->getOperand(1)));
+            fu_operation = createFu(instr, op0, op1);
+        } else {
+            fu_operation = createFu(instr, op0, nullptr);
+        }
+
+        auto* fu = module.addWire(fu_signal, fu_operation->getWidth());
+        fu->setExclDriver(fu_operation);
+    }
+}
+
 void rtl::RtlGenerator::generateDatapath() {
     auto* cur_state = module.find("cur_state");
     assert(cur_state != nullptr);
@@ -171,6 +219,22 @@ void rtl::RtlGenerator::generateDatapath() {
     reset_state->setOperand(1, ONE);
 
     cur_state->addCondition(reset_state, module.addConstant("0", cur_state->getWidth()));
+}
+
+void rtl::RtlGenerator::shareRegisters() {
+    for (auto& fu_bind_set : fu_binding_map) {
+        auto& fu_inst = fu_bind_set.first;
+        auto& instructions = fu_bind_set.second;
+
+        std::map<Instruction*, std::set<Instruction*>> independant_instructions;
+
+        binding.findIndependantInstructions(
+            instructions,
+            independant_instructions
+        );
+
+        shareRegistersForFu(instructions, independant_instructions);
+    }
 }
 
 void rtl::RtlGenerator::generateStateTransition(RtlSignal* condition, FsmState* state) {
@@ -269,6 +333,92 @@ bool rtl::RtlGenerator::isLiveAcrossStates(Value* val, FsmState* state) {
     } else {
         return fsm.getEndState(instr) != state;
     }
+}
+
+void rtl::RtlGenerator::shareRegistersForFu(std::set<Instruction*> instructions,
+                                            std::map<Instruction*, std::set<Instruction*>> independant_instructions)
+{
+	std::map<Instruction*, std::set<Instruction*>> shared_reg_instr_map;
+
+	// loop over every instruction assigned to this functional unit
+	for (auto* instr : instructions) {
+		// if it is a store, the verilogName(*inst) couldn't get its reg name
+		if (isa<StoreInst>(instr) || isa<LoadInst>(instr)) {
+			continue;
+		}
+
+		bool is_sharable = false;
+		for (auto shared_reg_instr_set : shared_reg_instr_map) {
+            auto* shared_reg_instr = shared_reg_instr_set.first;
+			auto& assigned_instr_set = shared_reg_instr_set.second;
+
+			assert(shared_reg_instr != instr);
+
+			bool independent = true;
+			for (auto* assigned_instr : assigned_instr_set) {
+				if (independant_instructions[assigned_instr].count(instr) == 0) {
+					independent = false;
+				}
+			}
+
+			if (independent) {
+				is_sharable = true;
+
+				auto* shared_reg = module.find(utility::getVerilogName(shared_reg_instr) + "_reg");
+				assert(shared_reg->isRegister());
+
+                auto* old_reg = module.find(utility::getVerilogName(instr) + "_reg");
+                assert(old_reg->isRegister());
+
+				//determine whether new register has a signed value
+                bool is_new_signed = shared_reg->getWidth().isSigned();
+                bool is_old_signed = old_reg->getWidth().isSigned();
+
+				bool is_signed = is_new_signed || is_old_signed;
+
+				unsigned int new_width = shared_reg->getWidth().getBitwidth();
+				unsigned int old_width = old_reg->getWidth().getBitwidth();
+
+				if (is_signed) {
+					if (!is_new_signed) {
+                        new_width += 1;
+                    } else if (!is_old_signed) {
+                        old_width += 1;
+				    }
+                }
+
+				if (new_width < old_width) {
+                    new_width = old_width;
+                }
+				
+                unsigned int reg_instr_size = shared_reg_instr->getType()->getPrimitiveSizeInBits();
+				new_width = std::min(new_width, reg_instr_size);
+
+				shared_reg->setWidth(RtlWidth(new_width, is_signed));
+
+                // now make sure the shared register is active at the
+                // correct times
+                auto* state = fsm.getEndState(instr);
+                driveSignalInState(
+                    shared_reg,
+                    module.find(utility::getVerilogName(instr)),
+                    state,
+                    instr
+                );
+
+                // convert the old register into a wire and drive it by the
+                // shared register
+                old_reg->setType("wire");
+				old_reg->setExclDriver(shared_reg, instr);
+				shared_reg_instr_map[shared_reg_instr].insert(instr);
+				break;
+			}
+		}
+
+		if (!is_sharable) {
+			shared_reg_instr_map[instr].insert(instr);
+		}
+	}
 }
 
 rtl::RtlSignal* rtl::RtlGenerator::getOperandSignal(FsmState* state, Value* op) {
@@ -393,6 +543,30 @@ rtl::RtlSignal* rtl::RtlGenerator::createFu(Instruction* instr, RtlSignal* op_0,
     return fu_output;
 }
 
+rtl::RtlSignal* rtl::RtlGenerator::createBindedFuUse(Instruction* instr, RtlSignal* op_0, RtlSignal* op_1) {
+    auto fu_inst = binding.getBindedFu(instr);
+    auto fu_signal = utility::getFuInstVerilogName(instr, fu_inst.second);
+
+    driveSignalInState(
+        module.find(fu_signal + "_op0"),
+        op_0,
+        visit_state,
+        instr
+    );
+
+    if (instr->isBinaryOp()) {
+        driveSignalInState(
+            module.find(fu_signal + "_op1"),
+            op_1,
+            visit_state,
+            instr
+        );
+    }
+
+    auto* fu = module.find(fu_signal);
+    return fu;
+}
+
 /* VISITING FUNCTIONS BEGIN --------------------------------------------------*/
 
 void rtl::RtlGenerator::visitReturnInst(ReturnInst &I) {
@@ -427,10 +601,9 @@ void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
     std::cout << "Visit binary operator " << I.getOpcodeName() << std::endl;
     auto* instr = &I;
 
-    // Check if operation was already binded
-    if (binded_instructions.count(instr) != 0) {
-        return;
-    }
+    // if (binded_instructions.count(instr) != 0) {
+    //     return;
+    // }
 
     auto* instr_wire = getInstructionLhsSignal(instr);
     auto* op_0 = getOperandSignal(visit_state, instr->getOperand(0));
@@ -440,7 +613,13 @@ void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
     std::cout << "Op 0: " << op_0->getName().value_or("NONAME") << std::endl;
     std::cout << "Op 1: " << op_1->getName().value_or("NONAME") << std::endl;
 
-    auto* fu = createFu(instr, op_0, op_1);
+    RtlSignal* fu = nullptr;
+    
+    if (binding.exists(instr)) {
+        fu = createBindedFuUse(instr, op_0, op_1);
+    } else {
+        fu = createFu(instr, op_0, op_1);
+    }
 
     // FIXME Что то хмурое с переподключением сигнала готовнисти FU: create_fu_enable_signals
     unsigned int latency = Scheduler::getInstructionCycles(*instr);
@@ -470,15 +649,19 @@ void rtl::RtlGenerator::visitUnaryOperator(UnaryInstruction &I) {
 
     auto* instr = &I;
 
-    // Check if operation was already binded
-    if (binded_instructions.count(instr) != 0) {
-        return;
-    }
+    // if (binded_instructions.count(instr) != 0) {
+    //     return;
+    // }
 
     auto* instr_wire = getInstructionLhsSignal(instr);
     auto* op_0 = getOperandSignal(visit_state, instr->getOperand(0));
 
-    auto* fu = createFu(instr, op_0, nullptr); // TODO избавиться от нулей через optional
+    RtlSignal* fu = nullptr;
+    if (binding.exists(instr)) {
+        fu = createBindedFuUse(instr, op_0, nullptr); // TODO избавиться от нулей через optional
+    } else {
+        fu = createFu(instr, op_0, nullptr);
+    }
 
     // FIXME Что то хмурое с переподключением сигнала готовнисти FU: create_fu_enable_signals
     unsigned int latency = Scheduler::getInstructionCycles(*instr);

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <llvm/IR/Value.h>
+#include <llvm/IR/Instruction.h>
 
 #include "../rtl/RtlSignal.hpp"
 
@@ -13,6 +14,8 @@ namespace llvm {
         namespace utility {
 
 std::string getVerilogName(Value* val);
+
+std::string getFuInstVerilogName(Instruction* instr, unsigned int idx);
 
 std::string getLabel(Value* val);
 

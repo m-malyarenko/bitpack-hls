@@ -56,6 +56,8 @@ public:
 
     void setTerminatingFlag(bool term_flag);
 
+    bool getTerminatingFlag();
+
     void setTransitionVariable(Value* var);
 
     Value* getTransitionVariable();
@@ -80,7 +82,7 @@ public:
 
     BasicBlock* getBasicBlock();
 
-    void printTransition();
+    void printStateInfo();
 
 private:
     InstructionList instr_list;

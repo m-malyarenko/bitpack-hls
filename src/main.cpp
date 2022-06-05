@@ -31,8 +31,6 @@ int main(int argc, char const *argv[]) {
     std::string ir_file(argv[1]);
     std::string function_name(argv[2]);
 
-    std::cout << ir_file << " " << function_name << std::endl;
-
     auto module = llvm::parseIRFile(ir_file, llvm_err, llvm_context);
 
     if (module.get() == nullptr) {

@@ -11,16 +11,13 @@ namespace llvm {
 
 struct FunctionalUnit {
     Operation op;
-    std::optional<unsigned int> num_constraint;
 
     FunctionalUnit(float f_max = 50.0F,
                    float crit_delay = 0.0F,
                    unsigned short latency = 0,
                    unsigned short n_lut = 1,
-                   unsigned short n_reg = 1,
-                   std::optional<unsigned int> num_constraint = std::nullopt)
-        : op(f_max, crit_delay, latency, n_lut, n_reg),
-          num_constraint(num_constraint) {};
+                   unsigned short n_reg = 1)
+        : op(f_max, crit_delay, latency, n_lut, n_reg) {};
 };
 
         } /* namespace hardware */
