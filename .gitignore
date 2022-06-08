@@ -2,3 +2,7 @@
 /build/
 /hls/out/*.ll
 /hls/out/*.v
+/hls/out/*.dot
+/hls/out/*.png
+/hls/testbench/*.vcd
+/hls/testbench/*.vvp
