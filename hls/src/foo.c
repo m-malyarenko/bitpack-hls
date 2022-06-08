@@ -1,9 +1,18 @@
 #include <stdint.h>
 
-uint32_t foo(uint32_t a, uint32_t b, uint32_t c) {
-    uint32_t y_1 = a * b;
-    uint32_t y_2 = c * 7;
-    uint32_t z = y_1 + y_2;
+uint16_t foo(uint8_t a,
+             uint8_t b,
+             uint8_t c,
+             uint8_t d,
+             uint8_t e,
+             uint16_t f)
+{
+    uint8_t x1 = a + d;
+    uint8_t x2 = b + e;
+    uint8_t x3 = x1 + c;
 
-    return z;
+    uint16_t y1 = x3 * x2;
+    uint16_t y2 = y1 + f;
+
+    return y2;
 }
