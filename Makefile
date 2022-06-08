@@ -75,7 +75,7 @@ CXX_FLAGS = -std=c++17 -Wall -Wpedantic $(INCLUDE_PATH)
 LD_FLAGS = $(LIB_PATH) $(LIB_LINK)
 
 ifeq ($(BUILD_TYPE), DEBUG)
-CXX_FLAGS += -O1 -g
+CXX_FLAGS += -Og -g
 else ifeq ($(BUILD_TYPE), RELEASE)
 CXX_FLAGS += -O2 -D NDEBUG
 else
