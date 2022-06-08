@@ -39,12 +39,12 @@ void binding::Binding::assignInstructions() {
         assign_info.independant_instructions
     );
 
-    for (auto& instr_map : assign_info.independant_instructions) {
-        std::cout << "\nInstruction: " << instr_map.first->getOpcodeName() << std::endl;
-        for (auto* ind_instr : instr_map.second) {
-            std::cout << "\tIndep from : " << ind_instr->getOpcodeName() << std::endl;
-        }
-    }
+    // for (auto& instr_map : assign_info.independant_instructions) {
+    //     std::cout << "\nInstruction: " << instr_map.first->getOpcodeName() << std::endl;
+    //     for (auto* ind_instr : instr_map.second) {
+    //         std::cout << "\tIndep from : " << ind_instr->getOpcodeName() << std::endl;
+    //     }
+    // }
 
     for (auto* state : fsm.states()) {
         state_idx_instr_lookup.clear();
@@ -77,14 +77,12 @@ void binding::Binding::bindFuInState(FsmState* state,
     Table weights(n_available, std::vector<int>(n_available));
     Table assignment(n_available, std::vector<int>(n_available));
 
-    std::cout << "Binding State: " << state->getName() << std::endl;
-
     int instr_idx = 0;
     for (auto* instr : state->instructions()) {
         if (constraints->getInstructionFu(*instr) != fu) {
             continue;
         }
-        std::cout << "Sharing instruction: " << instr->getOpcodeName() << std::endl;
+        // std::cout << "Sharing instruction: " << instr->getOpcodeName() << std::endl;
         // TODO Add check if operation can be shared (by default it can)
 
         createWeights(
@@ -320,8 +318,8 @@ void binding::Binding::findIndependantInstructionsInLiveBlocks(
             auto* instr_b = instr_bb_set_b->first;
             auto& bb_set_b = instr_bb_set_b->second;
 
-            std::cout << "Instr A: " << instr_a->getOpcodeName() << std::endl;
-            std::cout << "Instr b: " << instr_b->getOpcodeName() << std::endl;
+            // std::cout << "Instr A: " << instr_a->getOpcodeName() << std::endl;
+            // std::cout << "Instr b: " << instr_b->getOpcodeName() << std::endl;
 
             if (independant_instructions[instr_a].count(instr_b) != 0) {
                 continue;

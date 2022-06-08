@@ -15,6 +15,8 @@
 #include "../scheduling/fsm/Fsm.hpp"
 #include "../binding/Binding.hpp"
 #include "../binding/LifetimeAnalysis.hpp"
+#include "../binding/BasicBlockLifetimeAnalysis.hpp"
+#include "../binding/BitpackRegBinding.hpp"
 #include "RtlGenerator.hpp"
 
 using namespace llvm;
@@ -45,9 +47,9 @@ rtl::RtlModule& rtl::RtlGenerator::generate() {
 
     shareRegisters();
 
-#ifndef NDEBUG
-    module.printSignals();
-#endif
+// #ifndef NDEBUG
+//     module.printSignals();
+// #endif
 
     return module;
 }
@@ -152,6 +154,20 @@ void rtl::RtlGenerator::connectRegistersToWires() {
 }
 
 void rtl::RtlGenerator::performBinding() {
+    binding::BitpackRegBinding bp_binding(function, fsm);
+
+    bp_binding.bindRegisters();
+
+    bp_regs.assign(
+        bp_binding.getRegisters().begin(),
+        bp_binding.getRegisters().end()
+    );
+
+    bp_reg_binding_map.insert(
+        bp_binding.getRegisterMapping().begin(),
+        bp_binding.getRegisterMapping().end()
+    );
+
     binding.assignInstructions();
     
     for (auto& bind_map : binding.iter_binding()) {
@@ -186,6 +202,11 @@ void rtl::RtlGenerator::createBindingSignals() {
         auto* fu = module.addWire(fu_signal, fu_operation->getWidth());
         fu->setExclDriver(fu_operation);
     }
+
+    /* Create bitpack registers */
+    for (auto& reg : bp_regs) {
+        module.addReg(utility::getBpRegVarilogName(reg), RtlWidth(reg.width));
+    }
 }
 
 void rtl::RtlGenerator::generateDatapath() {
@@ -194,11 +215,6 @@ void rtl::RtlGenerator::generateDatapath() {
 
     for (auto* state : fsm.states()) {
         assert(state_signals.count(state) != 0);
-
-        std::cout << "Transition for state: " << state->getName() << std::endl;
-        if (state->getTransitionSignal() != nullptr) {
-            std::cout << "Transition signal: " << state->getTransitionSignal()->getName().value_or("NO") << std:: endl;
-        }
 
         auto* transition_state = module.addOperation(RtlOperation::Eq);
         transition_state->setOperand(0, cur_state);
@@ -455,7 +471,7 @@ rtl::RtlSignal* rtl::RtlGenerator::getOperandSignal(FsmState* state, Value* op) 
         auto* instr = dyn_cast<Instruction>(op);
 
         if (instr != nullptr) {
-            return module.find(wire);
+            return module.find(reg); // FIXME Пока что всегда привязывается регистр
         }
 
         RtlSignal* signal = nullptr;
@@ -570,7 +586,6 @@ rtl::RtlSignal* rtl::RtlGenerator::createBindedFuUse(Instruction* instr, RtlSign
 /* VISITING FUNCTIONS BEGIN --------------------------------------------------*/
 
 void rtl::RtlGenerator::visitReturnInst(ReturnInst &I) {
-    std::cout << "Visit ret instr" << std::endl;
     if (I.getNumOperands() != 0) {
         /* Non-void return */
         auto* ret_signal = module.find("return_val");
@@ -598,7 +613,6 @@ void rtl::RtlGenerator::visitSwitchInst(SwitchInst &I) {}
 void rtl::RtlGenerator::visitPHINode(PHINode &I) {}
 
 void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
-    std::cout << "Visit binary operator " << I.getOpcodeName() << std::endl;
     auto* instr = &I;
 
     // if (binded_instructions.count(instr) != 0) {
@@ -609,9 +623,9 @@ void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
     auto* op_0 = getOperandSignal(visit_state, instr->getOperand(0));
     auto* op_1 = getOperandSignal(visit_state, instr->getOperand(1));
 
-    std::cout << "Instr wire: " << instr_wire->getName().value_or("NONAME") << std::endl;
-    std::cout << "Op 0: " << op_0->getName().value_or("NONAME") << std::endl;
-    std::cout << "Op 1: " << op_1->getName().value_or("NONAME") << std::endl;
+    // std::cout << "Instr wire: " << instr_wire->getName().value_or("NONAME") << std::endl;
+    // std::cout << "Op 0: " << op_0->getName().value_or("NONAME") << std::endl;
+    // std::cout << "Op 1: " << op_1->getName().value_or("NONAME") << std::endl;
 
     RtlSignal* fu = nullptr;
     
@@ -645,8 +659,6 @@ void rtl::RtlGenerator::visitBinaryOperator(Instruction &I) {
 }
 
 void rtl::RtlGenerator::visitUnaryOperator(UnaryInstruction &I) {
-    std::cout << "Visit unary operator " << I.getOpcodeName() << std::endl;
-
     auto* instr = &I;
 
     // if (binded_instructions.count(instr) != 0) {
@@ -680,13 +692,10 @@ void rtl::RtlGenerator::visitUnaryOperator(UnaryInstruction &I) {
 }
 
 void rtl::RtlGenerator::visitICmpInst(ICmpInst &I) {
-    std::cout << "Visit cmp instr " << I.getOpcodeName() << std::endl;
     visitBinaryOperator(I);
 }
 
 void rtl::RtlGenerator::visitCastInst(CastInst &I) {
-    std::cout << "Visit cast instr " << I.getOpcodeName() << std::endl;
-
     auto* instr = &I;
     auto* instr_wire = getInstructionLhsSignal(instr);
     auto* op_0 = getOperandSignal(visit_state, instr->getOperand(0));
@@ -724,8 +733,6 @@ void rtl::RtlGenerator::visitCastInst(CastInst &I) {
 void rtl::RtlGenerator::visitAllocaInst(AllocaInst &I) {}
 
 void rtl::RtlGenerator::visitLoadInst(LoadInst &I) {
-    std::cout << "Visit load instr " << std::endl;
-
     // auto* instr = &I;
     // auto* addr = instr->getPointerOperand();
 
@@ -752,7 +759,6 @@ void rtl::RtlGenerator::visitLoadInst(LoadInst &I) {
 }
 
 void rtl::RtlGenerator::visitStoreInst(StoreInst &I) {
-    std::cout << "Visit store instr " << std::endl;
     // TODO Implement method
 }
 

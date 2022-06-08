@@ -8,6 +8,7 @@
 #include <llvm/IR/Instruction.h>
 
 #include "../rtl/RtlSignal.hpp"
+#include "../binding/BitpackRegBinding.hpp"
 
 namespace llvm {
     namespace bphls {
@@ -16,6 +17,8 @@ namespace llvm {
 std::string getVerilogName(Value* val);
 
 std::string getFuInstVerilogName(Instruction* instr, unsigned int idx);
+
+std::string getBpRegVarilogName(binding::BitpackRegBinding::Reg& reg);
 
 std::string getLabel(Value* val);
 

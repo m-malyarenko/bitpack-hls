@@ -11,6 +11,7 @@
 #include "../scheduling/fsm/Fsm.hpp"
 #include "../binding/LifetimeAnalysis.hpp"
 #include "../binding/Binding.hpp"
+#include "../binding/BitpackRegBinding.hpp"
 #include "RtlModule.hpp"
 
 namespace llvm {
@@ -62,6 +63,9 @@ private:
     std::set<Instruction*> visited_instr;
 
     std::map<binding::Binding::FuInstId, std::set<Instruction*>> fu_binding_map;
+
+    std::vector<binding::BitpackRegBinding::Reg> bp_regs;
+    std::map<Value*, binding::BitpackRegBinding::RegBitfield> bp_reg_binding_map;
 
     std::map<FsmState*, RtlSignal*> state_signals;
 

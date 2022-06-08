@@ -107,6 +107,24 @@ hardware::HardwareConstraints::HardwareConstraints() {
     fu_num_constraints[binary_op_fu_lookup[or_16_16]] = 1;
     fu_num_constraints[binary_op_fu_lookup[cmp_16_16]] = 1;
 
+    auto add_8_8 = bin_op(Instruction::Add, 8, 8);
+    auto mul_8_8 = bin_op(Instruction::Mul, 8, 8);
+    auto and_8_8 = bin_op(Instruction::And, 8, 8);
+    auto or_8_8 = bin_op(Instruction::Or, 8, 8);
+    auto cmp_8_8 = bin_op(Instruction::ICmp, 8, 8);
+
+    binary_op_fu_lookup[add_8_8] = new FunctionalUnit;
+    binary_op_fu_lookup[mul_8_8] = new FunctionalUnit;
+    binary_op_fu_lookup[and_8_8] = new FunctionalUnit;
+    binary_op_fu_lookup[or_8_8] = new FunctionalUnit;
+    binary_op_fu_lookup[cmp_8_8] = new FunctionalUnit;
+
+    fu_num_constraints[binary_op_fu_lookup[add_8_8]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[mul_8_8]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[and_8_8]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[or_8_8]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[cmp_8_8]] = 1;
+
 //     InstructionOpcode AddOpCode = (InstructionOpcode) Instruction::BinaryOps::Add;
 //     InstructionOpcode SubOpCode = (InstructionOpcode) Instruction::BinaryOps::Sub;
 //     InstructionOpcode ICmpOpCode = (InstructionOpcode) Instruction::ICmp;

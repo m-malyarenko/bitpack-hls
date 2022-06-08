@@ -471,21 +471,23 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
     bool no_else = is_register || (signal->getDefaultDriver() != nullptr);
 
     bool if_clause = false;
+    bool condition_printed = false;
 
     if (no_else) {
         out << "\tif (";
         printValue(condition);
         out << ") ";
         if_clause = true;
+        condition_printed = true;
     } else { // add "else"s
         if (n_conditions > 1) {
-            if ((n_conditions > 1) && (n_conditions == (condition_idx - 1))) {
+            if ((condition_idx - 1) == n_conditions) {
                 out << "\telse ";
                 out << "/* if (";
                 printValue(condition);
                 out << ") */ ";
             } else {
-                if (n_conditions > 0) {
+                if (condition_idx > 0) {
                     out << "\telse if (";
                 } else {
                     out << "\tif (";
@@ -494,20 +496,27 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
                 out << ") ";
             }
             if_clause = true;
+            condition_printed = true;
         } else {
             /* Allways trigger on const */
             if (driver->isConstant()) {
                 out << "if (reset) begin\n";
                 out << "\t" << driver->getName().value_or("unknown") << " = 0;\n";
                 out << "end\n";
+                condition_printed = true;
+            } else {
+                if_clause = false;
             }
-            if_clause = false;
         }
     }
 
     if (if_clause) {
         out << "begin\n";
         out << "\t\t";
+    }
+
+    if (!condition_printed) {
+        out << "\t";
     }
 
     static std::string assign_non_block_symb = "<=";

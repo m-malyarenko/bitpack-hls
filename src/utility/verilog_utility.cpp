@@ -79,6 +79,11 @@ std::string utility::getFuInstVerilogName(Instruction* instr, unsigned int idx) 
     return name;
 }
 
+std::string utility::getBpRegVarilogName(binding::BitpackRegBinding::Reg& reg) {
+    std::string name = "bp_reg_" + std::to_string(reg.id);
+    return name;
+}
+
 std::string utility::getLabel(Value* val) {
     static std::map<Value*, std::string> label_cache;
 

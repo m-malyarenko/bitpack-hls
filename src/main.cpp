@@ -49,16 +49,5 @@ int main(int argc, char const *argv[]) {
 
     const bool hls_status = hls.run();
 
-    if (hls_status) {
-        // std::string hls_output_buffer;
-        // llvm::raw_string_ostream hls_output(hls_output_buffer);
-
-        // hls.writeOut(hls_output);
-
-        // std::cout << hls_output_buffer;
-
-        return 0;
-    } else {
-        return 1;
-    }
+    return hls_status;
 }

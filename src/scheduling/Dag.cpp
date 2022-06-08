@@ -125,14 +125,14 @@ void Dag::constructDependencies(Instruction& instr) {
                 before_cast_instr_node.addUse(instr_node);
             }
 
+            // FIXME Обработать рекeрсивное приведение типов
             operand.set(before_cast_operand);
-            continue;
+        } else {
+            auto& dep_instr_node = *instr_node_lookup[dep_instr];
+
+            instr_node.addDependence(dep_instr_node);
+            dep_instr_node.addUse(instr_node);
         }
-
-        auto& dep_instr_node = *instr_node_lookup[dep_instr];
-
-        instr_node.addDependence(dep_instr_node);
-        dep_instr_node.addUse(instr_node);
     }
 
     /* TODO Call dependencies */
