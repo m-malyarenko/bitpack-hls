@@ -128,7 +128,7 @@ void verilog::VerilogWriter::printSignalDefinition(rtl::RtlSignal* signal) {
 
     bool is_register = signal->isRegister();
     bool is_block_assign = !is_register;
-    unsigned char width = signal->getWidth().getBitwidth();
+    auto width = signal->getWidth();
 
     if (signal->getName().value_or("") == "cur_state") {
         out << "/* FSM BEGIN ---------------------------------------------------------------*/\n\n";
@@ -153,9 +153,9 @@ void verilog::VerilogWriter::printSignalDefinition(rtl::RtlSignal* signal) {
         printAssignment(signal, driver, width, is_block_assign);
 
         /* Allways trigger on const */
-        if (driver->isConstant()) {
+        if (driver->signal->isConstant()) {
             out << "if (reset) begin\n";
-            out << "\t" << driver->getName().value_or("unknown") << " = 0;\n";
+            out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
             out << "end\n";
         }
     } else {
@@ -244,7 +244,7 @@ void verilog::VerilogWriter::printFsmController(rtl::RtlSignal* signal, bool ass
         std::vector<rtl::RtlSignal*> clauses;
 
         for (auto i : fsm_case.second) {
-            auto driver_name = signal->getDriver(i)->getName().value_or("");
+            auto driver_name = signal->getDriver(i)->signal->getName().value_or("");
             if ((driver_name == fsm_case.first)) {
                 continue;
             }
@@ -277,12 +277,12 @@ void verilog::VerilogWriter::printFsmController(rtl::RtlSignal* signal, bool ass
 
                 out << ") begin\n";
                 out << "\t\t\tnext_state = ";
-                printValue(signal->getDriver(i), width);
+                printValue(signal->getDriver(i)->signal);
                 out << ";\n";
                 out << "\t\tend\n";
             } else {
                 out << "\t\tnext_state = ";
-                printValue(signal->getDriver(i), width);
+                printValue(signal->getDriver(i)->signal);
                 out << ";\n";
             }
 
@@ -296,8 +296,8 @@ void verilog::VerilogWriter::printFsmController(rtl::RtlSignal* signal, bool ass
 }
 
 void verilog::VerilogWriter::printAssignment(rtl::RtlSignal* signal,
-                                             rtl::RtlSignal* driver,
-                                             unsigned int width,
+                                             rtl::RtlSignal::RtlSignalDriver* driver,
+                                             rtl::RtlWidth width,
                                              bool blocking)
 {
     static std::string assign_non_block = "<=";
@@ -305,13 +305,17 @@ void verilog::VerilogWriter::printAssignment(rtl::RtlSignal* signal,
 
     std::string& assign = blocking ? assign_block : assign_non_block;
 
-    out << "\t" << signal->getName().value_or("unknown");
+    out << "\t";
+    printValue(signal, driver->dest_bits);
     out << " " << assign << " ";
-    printValue(driver, width);
+    printValue(driver->signal, driver->src_bits);
     out << ";\n";
 }
 
-void verilog::VerilogWriter::printValue(rtl::RtlSignal* signal, unsigned int width, bool zext) {
+void verilog::VerilogWriter::printValue(rtl::RtlSignal* signal,
+                                        rtl::RtlWidth width,
+                                        bool zext)
+{
     assert(signal != nullptr);
 
     if (signal->isOperation()) {
@@ -327,6 +331,7 @@ void verilog::VerilogWriter::printValue(rtl::RtlSignal* signal, unsigned int wid
     if (!signal->getValue().has_value()) {
         // TODO Printing concatenation & minimizing biwidth
         out << signal->getName().value_or("unknown");
+        printWidth(width);
     } else {
         if (utility::isNumeric(signal->getValue().value())) {
             printBiwidthPrefix(signal->getWidth());
@@ -336,7 +341,7 @@ void verilog::VerilogWriter::printValue(rtl::RtlSignal* signal, unsigned int wid
     }
 }
 
-void verilog::VerilogWriter::printOperator(rtl::RtlOperation* operation, unsigned int width) {
+void verilog::VerilogWriter::printOperator(rtl::RtlOperation* operation, rtl::RtlWidth width) {
     assert(operation != nullptr);
 
     auto opcode = operation->getOpcode();
@@ -355,15 +360,15 @@ void verilog::VerilogWriter::printOperator(rtl::RtlOperation* operation, unsigne
         //     out << "}";
         // } else {
         out << "(";
-        printValue(operation->getOperand(0), width);
+        printValue(operation->getOperand(0));
         printOpcode(operation->getOpcode());
-        printValue(operation->getOperand(1), width);
+        printValue(operation->getOperand(1));
         out << ")";
         break;
     case 1:
         if (opcode == rtl::RtlOperation::Not) {
             out << "~(";
-            printValue(operation->getOperand(0), width);
+            printValue(operation->getOperand(0));
             out << ")";
         } else if (opcode == rtl::RtlOperation::SExt) {
             // out << "$signed(";
@@ -481,7 +486,7 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
         condition_printed = true;
     } else { // add "else"s
         if (n_conditions > 1) {
-            if ((condition_idx - 1) == n_conditions) {
+            if (condition_idx == (n_conditions - 1)) {
                 out << "\telse ";
                 out << "/* if (";
                 printValue(condition);
@@ -499,9 +504,9 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
             condition_printed = true;
         } else {
             /* Allways trigger on const */
-            if (driver->isConstant()) {
+            if (driver->signal->isConstant()) {
                 out << "if (reset) begin\n";
-                out << "\t" << driver->getName().value_or("unknown") << " = 0;\n";
+                out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
                 out << "end\n";
                 condition_printed = true;
             } else {
@@ -528,9 +533,9 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
             : assign_non_block_symb;
 
     out << signal->getName().value_or("unknown");
-    printWidth(driver->getWidth()); // FIXME Указать какие биты драфйвера использовать
+    printWidth(driver->dest_bits);
     out << " " << assign << " ";
-    printValue(driver, width, false);
+    printValue(driver->signal, driver->src_bits, false);
     out << ";\n";
 
     if (if_clause) {

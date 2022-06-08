@@ -35,6 +35,8 @@ rtl::RtlGenerator::RtlGenerator(llvm::Function& function,
 rtl::RtlModule& rtl::RtlGenerator::generate() {
     generateDeclaration();
 
+    performBitpackRegBinding();
+
     addInstructionsSignals();
 
     connectRegistersToWires();
@@ -45,7 +47,7 @@ rtl::RtlModule& rtl::RtlGenerator::generate() {
 
     generateDatapath();
 
-    shareRegisters();
+    // shareOperationRegisters();
 
 // #ifndef NDEBUG
 //     module.printSignals();
@@ -110,50 +112,7 @@ void rtl::RtlGenerator::addDefaultPorts() {
     module.addOutputReg("finish");
 }
 
-void rtl::RtlGenerator::addInstructionsSignals() {
-    for (auto& basic_block : function) {
-        for (auto& instr : basic_block) {
-            if (shouldIgnoreInstruction(instr)) {
-                continue;
-            }
-
-            auto wire = utility::getVerilogName(&instr);
-            auto reg = wire + "_reg";
-
-            if (!module.exists(wire)) {
-                module.addWire(wire, RtlWidth(&instr)); // FIXME add wire width
-            }
-
-            if (!module.exists(reg)) {
-                module.addReg(reg, RtlWidth(&instr)); // FIXME add reg width
-            }
-        }
-    }
-
-    // TODO Здесь как раз можно вызвать функцию которая подсоеденит управляющеи сигналы кластеров
-}
-
-void rtl::RtlGenerator::connectRegistersToWires() {
-    for (auto& basic_block : function) {
-        for (auto& instr : basic_block) {
-            if (shouldIgnoreInstruction(instr) || isa<PHINode>(instr)) {
-                continue;
-            }
-
-            auto wire = utility::getVerilogName(&instr);
-            auto reg = wire + "_reg";
-
-            driveSignalInState(
-                module.find(reg),
-                module.find(wire),
-                fsm.getEndState(&instr),
-                &instr
-            );
-        }
-    }
-}
-
-void rtl::RtlGenerator::performBinding() {
+void rtl::RtlGenerator::performBitpackRegBinding() {
     binding::BitpackRegBinding bp_binding(function, fsm);
 
     bp_binding.bindRegisters();
@@ -167,7 +126,96 @@ void rtl::RtlGenerator::performBinding() {
         bp_binding.getRegisterMapping().begin(),
         bp_binding.getRegisterMapping().end()
     );
+}
 
+void rtl::RtlGenerator::addInstructionsSignals() {
+    for (auto& basic_block : function) {
+        for (auto& instr : basic_block) {
+            if (shouldIgnoreInstruction(instr)) {
+                continue;
+            }
+
+            auto wire = utility::getVerilogName(&instr);
+            auto reg = wire + "_reg";
+
+            if (!module.exists(wire)) {
+                module.addWire(wire, RtlWidth(&instr));
+            }
+
+             // FIXME add wire width
+             // FIXME add reg width
+             // Почему то до сих пор не убрал. А почему ммммм?
+            if (bp_reg_binding_map.count(&instr) != 0) {
+                auto& sub_reg = bp_reg_binding_map[&instr]; 
+                auto& bp_reg = sub_reg.reg;
+
+                auto bp_reg_name = utility::getBpRegVarilogName(bp_reg);
+
+                if (!module.exists(bp_reg_name)) {
+                    module.addReg(bp_reg_name, RtlWidth(bp_reg.width));
+                }
+
+                if (!module.exists(reg)) {
+                    /* Bitpack Register field proxy */
+                    module.addWire(reg, RtlWidth(&instr));
+                }
+            } else {
+                if (!module.exists(reg)) {
+                    /* Normal register */
+                    module.addReg(reg, RtlWidth(&instr));
+                }
+            }
+        }
+    }
+}
+
+void rtl::RtlGenerator::connectRegistersToWires() {
+    for (auto& basic_block : function) {
+        for (auto& instr : basic_block) {
+            if (shouldIgnoreInstruction(instr) || isa<PHINode>(instr)) {
+                continue;
+            }
+
+            auto wire = utility::getVerilogName(&instr);
+            auto reg = wire + "_reg";
+
+            auto* wire_signal = module.find(wire);
+            auto* reg_signal = module.find(reg);
+
+            if (bp_reg_binding_map.count(&instr) != 0) {
+                auto& sub_reg = bp_reg_binding_map[&instr]; 
+                auto& reg = sub_reg.reg;
+
+                auto bp_reg = utility::getBpRegVarilogName(reg);
+                auto* bp_reg_signal = module.find(bp_reg);
+
+                assert(bp_reg_signal != nullptr);
+
+                RtlWidth bitfield_width(sub_reg.bitfield.first, sub_reg.bitfield.second, false);
+
+                driveSignalInState(
+                    bp_reg_signal,
+                    wire_signal,
+                    fsm.getEndState(&instr),
+                    &instr,
+                    wire_signal->getWidth(),
+                    bitfield_width
+                );
+
+                reg_signal->setExclDriver(bp_reg_signal, &instr, bitfield_width);
+            } else {
+                driveSignalInState(
+                    module.find(reg),
+                    module.find(wire),
+                    fsm.getEndState(&instr),
+                    &instr
+                );
+            }
+        }
+    }
+}
+
+void rtl::RtlGenerator::performBinding() {
     binding.assignInstructions();
     
     for (auto& bind_map : binding.iter_binding()) {
@@ -237,7 +285,7 @@ void rtl::RtlGenerator::generateDatapath() {
     cur_state->addCondition(reset_state, module.addConstant("0", cur_state->getWidth()));
 }
 
-void rtl::RtlGenerator::shareRegisters() {
+void rtl::RtlGenerator::shareOperationRegisters() {
     for (auto& fu_bind_set : fu_binding_map) {
         auto& fu_inst = fu_bind_set.first;
         auto& instructions = fu_bind_set.second;
@@ -307,14 +355,16 @@ rtl::RtlOperation* rtl::RtlGenerator::addStateCheckOperation(FsmState* state) {
 void rtl::RtlGenerator::driveSignalInState(RtlSignal* signal,
                                            RtlSignal* driver,
                                            FsmState* state,
-                                           Instruction* instr)
+                                           Instruction* instr,
+                                           std::optional<RtlWidth> src_bits,
+                                           std::optional<RtlWidth> dets_bits)
 {
     assert(signal != nullptr);
     assert(driver != nullptr);
     assert(state != nullptr);
 
     RtlOperation* condition = addStateCheckOperation(state);
-    signal->addCondition(condition, driver, instr);
+    signal->addCondition(condition, driver, instr, src_bits, dets_bits);
 }
 
 bool rtl::RtlGenerator::shouldIgnoreInstruction(Instruction& instr) {
@@ -381,10 +431,8 @@ void rtl::RtlGenerator::shareRegistersForFu(std::set<Instruction*> instructions,
 				is_sharable = true;
 
 				auto* shared_reg = module.find(utility::getVerilogName(shared_reg_instr) + "_reg");
-				assert(shared_reg->isRegister());
 
                 auto* old_reg = module.find(utility::getVerilogName(instr) + "_reg");
-                assert(old_reg->isRegister());
 
 				//determine whether new register has a signed value
                 bool is_new_signed = shared_reg->getWidth().isSigned();

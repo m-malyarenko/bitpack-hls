@@ -71,46 +71,46 @@ void rtl::NetList::connectAtPin(RtlSignal* signal, RtlSignal* driver, Pin* pin) 
 }
 
 void rtl::NetList::propagateBackwards(RtlSignal* signal) {
-    static std::set<RtlSignal*> visited;
+//     static std::set<RtlSignal*> visited;
 
-    if (visited.count(signal) != 0) {
-        return;
-    } else {
-        visited.insert(signal);
-    }
+//     if (visited.count(signal) != 0) {
+//         return;
+//     } else {
+//         visited.insert(signal);
+//     }
 
-    addCell(signal);
+//     addCell(signal);
 
-    if (signal->isOperation()) {
-        auto* operation = static_cast<RtlOperation*>(signal);
+//     if (signal->isOperation()) {
+//         auto* operation = static_cast<RtlOperation*>(signal);
 
-        for (unsigned int i = 0; i < operation->getOperandsNum(); i++) {
-            auto* operand = operation->getOperand(i);
+//         for (unsigned int i = 0; i < operation->getOperandsNum(); i++) {
+//             auto* operand = operation->getOperand(i);
 
-            connectAtPin(signal, operand);
-            propagateBackwards(operand);
-        }
-    } else {
-        auto* default_driver = signal->getDefaultDriver();
-        if (default_driver != nullptr) {
-            connectAtPin(signal, default_driver);
-            propagateBackwards(default_driver);
-        } 
+//             connectAtPin(signal, operand);
+//             propagateBackwards(operand);
+//         }
+//     } else {
+//         auto* default_driver = signal->getDefaultDriver();
+//         if (default_driver != nullptr) {
+//             connectAtPin(signal, default_driver);
+//             propagateBackwards(default_driver);
+//         } 
 
-        for (unsigned int i = 0; i < signal->getDriversNum(); i++) {
-            auto* driver = signal->getDriver(i);
-            assert(driver != nullptr);
+//         for (unsigned int i = 0; i < signal->getDriversNum(); i++) {
+//             auto* driver = signal->getDriver(i);
+//             assert(driver != nullptr);
 
-            connectAtPin(signal, driver);
-            propagateBackwards(driver);
-        }
+//             connectAtPin(signal, driver);
+//             propagateBackwards(driver);
+//         }
 
-        for (unsigned int i = 0; i < signal->getConditionsNum(); i++) {
-            auto* condition = signal->getCondition(i);
-            assert(condition != nullptr);
+//         for (unsigned int i = 0; i < signal->getConditionsNum(); i++) {
+//             auto* condition = signal->getCondition(i);
+//             assert(condition != nullptr);
 
-            connectAtPin(signal, condition);
-            propagateBackwards(condition);
-        }
-    }
+//             connectAtPin(signal, condition);
+//             propagateBackwards(condition);
+//         }
+//     }
 }

@@ -36,13 +36,13 @@ public:
     /** Binding register bitfield */
     struct RegBitfield {
         Reg reg;
-        std::pair<unsigned int, unsigned int> bitfield;
+        std::pair<unsigned char /*msb*/, unsigned char /*lsb*/> bitfield;
 
         RegBitfield();
 
         RegBitfield(Reg reg);
 
-        RegBitfield(Reg reg, unsigned int lsb, unsigned int msb);
+        RegBitfield(Reg reg, unsigned char msb, unsigned char lsb);
 
         RegBitfield operator + (RegBitfield& other);
     };

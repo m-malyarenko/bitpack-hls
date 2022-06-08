@@ -3,6 +3,7 @@
 
 #include <map>
 #include <set>
+#include <optional>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
@@ -78,6 +79,8 @@ private:
 
     void addDefaultPorts();
 
+    void performBitpackRegBinding();
+
     void addInstructionsSignals();
 
     void connectRegistersToWires();
@@ -88,14 +91,16 @@ private:
 
     void generateDatapath();
 
-    void shareRegisters();
+    void shareOperationRegisters();
 
     void generateStateTransition(RtlSignal* cond, FsmState* state);
 
     void driveSignalInState(RtlSignal* signal,
                             RtlSignal* driver,
                             FsmState* state,
-                            Instruction* instr = nullptr);
+                            Instruction* instr = nullptr,
+                            std::optional<RtlWidth> src_bits = std::nullopt,
+                            std::optional<RtlWidth> dets_bits = std::nullopt);
 
     bool isUsedAcrossStates(Value* val, FsmState* state);
 

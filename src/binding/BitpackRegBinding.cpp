@@ -46,8 +46,8 @@ binding::BitpackRegBinding::LifetimeInterval::LifetimeInterval(unsigned int weig
       weight(weight) {}
 
 binding::BitpackRegBinding::LifetimeInterval::LifetimeInterval(unsigned int def,
-                                                                    unsigned int use,
-                                                                    unsigned int weight)
+                                                               unsigned int use,
+                                                               unsigned int weight)
     : def(def),
       use(use),
       weight(weight) {}
@@ -70,17 +70,17 @@ binding::BitpackRegBinding::RegBitfield::RegBitfield()
 
 binding::BitpackRegBinding::RegBitfield::RegBitfield(Reg reg)
     : reg(reg),
-      bitfield(std::make_pair(0, reg.width - 1)) {}
+      bitfield(std::make_pair(reg.width - 1, 0)) {}
 
-binding::BitpackRegBinding::RegBitfield::RegBitfield(Reg reg, unsigned int lsb, unsigned int msb)
+binding::BitpackRegBinding::RegBitfield::RegBitfield(Reg reg, unsigned char msb, unsigned char lsb)
     : reg(reg),
-      bitfield(std::make_pair(lsb, msb)) {}
+      bitfield(std::make_pair(msb, lsb)) {}
 
 binding::BitpackRegBinding::RegBitfield binding::BitpackRegBinding::RegBitfield::operator + (RegBitfield& other) {
-    auto min_lsb = std::min(bitfield.first, other.bitfield.first);
-    auto max_msb = std::max(bitfield.second, other.bitfield.second);
+    auto max_msb = std::max(bitfield.first, other.bitfield.first);
+    auto min_lsb = std::min(bitfield.second, other.bitfield.second);
 
-    return RegBitfield(this->reg, min_lsb, max_msb);
+    return RegBitfield(this->reg, max_msb, min_lsb);
 }
 
 binding::BitpackRegBinding::LifetimeWidthPool::LifetimeWidthPool(Value* var,
@@ -488,7 +488,7 @@ void binding::BitpackRegBinding::mergeSubRegisters(unsigned int pool_width)
         unsigned int msb = pool_width - 1;
 
         for (auto sub_reg_id : reg_bitfield_set.second) {
-            bitfields[sub_reg_id] = RegBitfield(reg, lsb, msb);
+            bitfields[sub_reg_id] = RegBitfield(reg, msb, lsb);
             lsb += pool_width;
             msb += pool_width;
         }
@@ -524,8 +524,8 @@ void binding::BitpackRegBinding::mapVariablesToBitfields() {
         var_bind.first->printAsOperand(out);
         out << "\tReg ID: " << std::to_string(var_bind.second.reg.id);
         out << "\tReg Width: " << std::to_string(var_bind.second.reg.width);
-        out << "\tBitfield: [" << std::to_string(var_bind.second.bitfield.second);
-        out << ":" << std::to_string(var_bind.second.bitfield.first) << "]\n";
+        out << "\tBitfield: [" << std::to_string(var_bind.second.bitfield.first);
+        out << ":" << std::to_string(var_bind.second.bitfield.second) << "]\n";
     }
 
     std::cout << out_buffer;

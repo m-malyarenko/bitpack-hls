@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <llvm/IR/Instruction.h>
 
@@ -15,6 +16,16 @@ namespace llvm {
 
 class RtlSignal {
 public:
+    struct RtlSignalDriver {
+        RtlSignal* signal;
+        RtlWidth src_bits;
+        RtlWidth dest_bits;
+
+        RtlSignalDriver(RtlSignal* driver, RtlWidth dest_bits);
+
+        RtlSignalDriver(RtlSignal* driver, RtlWidth dest_bits, RtlWidth src_bits);
+    };
+
     RtlSignal();
 
     RtlSignal(std::optional<std::string> name,
@@ -46,17 +57,30 @@ public:
 
     RtlWidth getWidth();
 
-    void setExclDriver(RtlSignal* driver, Instruction* instr = nullptr);
+    void setDriver(unsigned int i,
+                   RtlSignal* driver,
+                   Instruction* instr = nullptr,
+                   std::optional<RtlWidth> src_bits = std::nullopt,
+                   std::optional<RtlWidth> dets_bits = std::nullopt);
 
-    void setDriver(unsigned int i, RtlSignal* driver, Instruction* instr = nullptr);
+    void setExclDriver(RtlSignal* driver,
+                       Instruction* instr = nullptr,
+                       std::optional<RtlWidth> src_bits = std::nullopt,
+                       std::optional<RtlWidth> dets_bits = std::nullopt);
 
-    RtlSignal* getDriver(unsigned int i);
+    RtlSignalDriver* getDriver(unsigned int i);
 
-    void setDefaultDriver(RtlSignal* driver);
+    void setDefaultDriver(RtlSignal* driver,
+                          std::optional<RtlWidth> src_bits = std::nullopt,
+                          std::optional<RtlWidth> dets_bits = std::nullopt);
 
-    RtlSignal* getDefaultDriver();
+    RtlSignalDriver* getDefaultDriver();
 
-    void addCondition(RtlSignal* cond, RtlSignal* driver, Instruction* instr = nullptr);
+    void addCondition(RtlSignal* cond,
+                      RtlSignal* driver,
+                      Instruction* instr = nullptr,
+                      std::optional<RtlWidth> src_bits = std::nullopt,
+                      std::optional<RtlWidth> dets_bits = std::nullopt);
 
     RtlSignal* getCondition(unsigned int i);
 
@@ -71,11 +95,10 @@ private:
 
     RtlWidth bitwidth;
 
-    RtlSignal* driver;
-    RtlSignal* default_driver;
+    RtlSignalDriver* default_driver;
 
     std::vector<RtlSignal*> conditions;
-    std::vector<RtlSignal*> drivers;
+    std::vector<RtlSignalDriver*> drivers;
     std::vector<Instruction*> instructions;
 };
 

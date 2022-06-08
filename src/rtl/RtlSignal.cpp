@@ -9,9 +9,18 @@
 using namespace llvm;
 using namespace bphls;
 
+rtl::RtlSignal::RtlSignal::RtlSignalDriver::RtlSignalDriver(RtlSignal* driver, RtlWidth dest_bits)
+    : signal(driver),
+      src_bits(driver->getWidth()),
+      dest_bits(dest_bits) {}
+
+rtl::RtlSignal::RtlSignal::RtlSignalDriver::RtlSignalDriver(RtlSignal* driver, RtlWidth dest_bits, RtlWidth src_bits)
+    : signal(driver),
+      src_bits(src_bits),
+      dest_bits(dest_bits) {}
+
 rtl::RtlSignal::RtlSignal()
-    : driver(nullptr),
-      default_driver(nullptr) {}
+    : default_driver(nullptr) {}
 
 rtl::RtlSignal::RtlSignal(std::optional<std::string> name,
                           std::optional<std::string> value,
@@ -21,7 +30,6 @@ rtl::RtlSignal::RtlSignal(std::optional<std::string> name,
       type(type),
       value(value),
       bitwidth(bitwidth),
-      driver(nullptr),
       default_driver(nullptr) {}
 
 bool rtl::RtlSignal::isRegister() {
@@ -64,36 +72,82 @@ std::optional<std::string>& rtl::RtlSignal::getValue() {
     return value;
 }
 
-void rtl::RtlSignal::setDriver(unsigned int i, RtlSignal* driver, Instruction* instr) {
+void rtl::RtlSignal::setDriver(unsigned int i,
+                               RtlSignal* driver,
+                               Instruction* instr,
+                               std::optional<RtlWidth> src_bits,
+                               std::optional<RtlWidth> dets_bits)
+{
     // TODO Implement method
 }
 
-rtl::RtlSignal* rtl::RtlSignal::getDriver(unsigned int i) {
+rtl::RtlSignal::RtlSignalDriver* rtl::RtlSignal::getDriver(unsigned int i) {
     return drivers.at(i);
 }
 
-void rtl::RtlSignal::setExclDriver(RtlSignal* driver, Instruction* instr) {
+void rtl::RtlSignal::setExclDriver(RtlSignal* driver,
+                                   Instruction* instr,
+                                   std::optional<RtlWidth> src_bits,
+                                   std::optional<RtlWidth> dets_bits)
+{
+    for (auto* driver : drivers) {
+        if (driver != nullptr) {
+            delete driver;
+            driver = nullptr;
+        }
+    }
+
     drivers.clear();
     conditions.clear();
     instructions.clear();
 
     instructions.push_back(instr);
-    drivers.push_back(driver);
+
+    auto dest_bits_actual = dets_bits.value_or(this->getWidth());
+
+    auto* rtl_driver =
+        src_bits.has_value()
+            ? new RtlSignalDriver(driver, dest_bits_actual, src_bits.value())
+            : new RtlSignalDriver(driver, dest_bits_actual);
+
+    drivers.push_back(rtl_driver);
 }
 
-void rtl::RtlSignal::setDefaultDriver(RtlSignal* driver) {
+void rtl::RtlSignal::setDefaultDriver(RtlSignal* driver,
+                                      std::optional<RtlWidth> src_bits,
+                                      std::optional<RtlWidth> dets_bits)
+{
     assert(driver != nullptr);
+    delete default_driver;
 
-    default_driver = driver;
+    auto dest_bits_actual = dets_bits.value_or(this->getWidth());
+
+    default_driver =
+        src_bits.has_value()
+            ? new RtlSignalDriver(driver, dest_bits_actual, src_bits.value())
+            : new RtlSignalDriver(driver, dest_bits_actual);
 }
 
-rtl::RtlSignal* rtl::RtlSignal::getDefaultDriver() {
+rtl::RtlSignal::RtlSignalDriver* rtl::RtlSignal::getDefaultDriver() {
     return default_driver;
 }
 
-void rtl::RtlSignal::addCondition(RtlSignal* cond, RtlSignal* driver, Instruction* instr) {
+void rtl::RtlSignal::addCondition(RtlSignal* cond,
+                                  RtlSignal* driver,
+                                  Instruction* instr,
+                                  std::optional<RtlWidth> src_bits,
+                                  std::optional<RtlWidth> dets_bits)
+{
     conditions.push_back(cond);
-    drivers.push_back(driver);
+
+    auto dest_bits_actual = dets_bits.value_or(this->getWidth());
+
+    auto* rtl_driver =
+        src_bits.has_value()
+            ? new RtlSignalDriver(driver, dest_bits_actual, src_bits.value())
+            : new RtlSignalDriver(driver, dest_bits_actual);
+
+    drivers.push_back(rtl_driver);
     instructions.push_back(instr);
 }
 
