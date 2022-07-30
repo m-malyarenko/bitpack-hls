@@ -119,7 +119,7 @@ hardware::HardwareConstraints::HardwareConstraints() {
     binary_op_fu_lookup[or_8_8] = new FunctionalUnit;
     binary_op_fu_lookup[cmp_8_8] = new FunctionalUnit;
 
-    fu_num_constraints[binary_op_fu_lookup[add_8_8]] = 1;
+    fu_num_constraints[binary_op_fu_lookup[add_8_8]] = 2;
     fu_num_constraints[binary_op_fu_lookup[mul_8_8]] = 1;
     fu_num_constraints[binary_op_fu_lookup[and_8_8]] = 1;
     fu_num_constraints[binary_op_fu_lookup[or_8_8]] = 1;

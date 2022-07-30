@@ -153,11 +153,11 @@ void verilog::VerilogWriter::printSignalDefinition(rtl::RtlSignal* signal) {
         printAssignment(signal, driver, width, is_block_assign);
 
         /* Allways trigger on const */
-        if (driver->signal->isConstant()) {
-            out << "if (reset) begin\n";
-            out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
-            out << "end\n";
-        }
+        // if (driver->signal->isConstant()) {
+        //     out << "if (reset) begin\n";
+        //     out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
+        //     out << "end\n";
+        // }
     } else {
         /* Special case for FSM state signal */
         if (signal->getName().value_or("") == "cur_state") {
@@ -503,15 +503,15 @@ void verilog::VerilogWriter::printCondition(rtl::RtlSignal* signal,
             if_clause = true;
             condition_printed = true;
         } else {
-            /* Allways trigger on const */
-            if (driver->signal->isConstant()) {
-                out << "if (reset) begin\n";
-                out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
-                out << "end\n";
-                condition_printed = true;
-            } else {
+            // /* Allways trigger on const */
+            // if (driver->signal->isConstant()) {
+            //     out << "if (reset) begin\n";
+            //     out << "\t" << driver->signal->getName().value_or("unknown") << " = 0;\n";
+            //     out << "end\n";
+            //     condition_printed = true;
+            // } else {
                 if_clause = false;
-            }
+            // }
         }
     }
 

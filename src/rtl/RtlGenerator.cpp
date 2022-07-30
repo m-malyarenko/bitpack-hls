@@ -34,7 +34,9 @@ rtl::RtlGenerator::RtlGenerator(llvm::Function& function,
 rtl::RtlModule& rtl::RtlGenerator::generate() {
     generateDeclaration();
 
+#ifdef BITPACK
     performBitpackRegBinding();
+#endif
 
     addInstructionsSignals();
 
@@ -46,7 +48,9 @@ rtl::RtlModule& rtl::RtlGenerator::generate() {
 
     generateDatapath();
 
-    // shareOperationRegisters();
+#ifdef REG_OPT
+    shareOperationRegisters();
+#endif
 
 // #ifndef NDEBUG
 //     module.printSignals();
@@ -141,9 +145,6 @@ void rtl::RtlGenerator::addInstructionsSignals() {
                 module.addWire(wire, RtlWidth(&instr));
             }
 
-             // FIXME add wire width
-             // FIXME add reg width
-             // Почему то до сих пор не убрал. А почему ммммм?
             if (bp_reg_binding_map.count(&instr) != 0) {
                 auto& sub_reg = bp_reg_binding_map[&instr]; 
                 auto& bp_reg = sub_reg.reg;

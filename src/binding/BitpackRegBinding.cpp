@@ -313,7 +313,7 @@ void binding::BitpackRegBinding::performLeftEdge()
 
     out << "\n";
 
-    RegId cur_sub_reg_id = 0;
+    SubRegId cur_sub_reg_id = 0;
 
     unsigned int pool_size = lt_pool_table.size();
     for (unsigned int i = 0; i < pool_size; i++) {
