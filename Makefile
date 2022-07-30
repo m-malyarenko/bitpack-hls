@@ -40,7 +40,11 @@ $(OBJ_DIR): $(BUILD_DIR)
 # Build type ------------------------------------------------------------------
 
 # Build type: DEBUG, RELEASE
-BUILD_TYPE = DEBUG
+BUILD_TYPE = RELEASE
+
+BITPACK_EN = FALSE
+
+REG_OPT = TRUE
 
 # Tools -----------------------------------------------------------------------
 
@@ -79,7 +83,15 @@ CXX_FLAGS += -Og -g
 else ifeq ($(BUILD_TYPE), RELEASE)
 CXX_FLAGS += -O2 -D NDEBUG
 else
-$(error Invalid BUILD_TYPE. Possible values: DEBUG, RELEASE)
+$(error Invalid parameter BUILD_TYPE. Possible values: DEBUG, RELEASE)
+endif
+
+ifeq ($(BITPACK_EN), TRUE)
+CXX_FLAGS += -D BITPACK
+endif
+
+ifeq ($(REG_OPT), TRUE)
+CXX_FLAGS += -D REG_OPT
 endif
 
 ifeq ($(PROJECT_TYPE), BIN)
