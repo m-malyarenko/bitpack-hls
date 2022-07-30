@@ -1,6 +1,6 @@
 `timescale 1us/100ns
 
-module foo_testbench;
+module bar_testbench;
 
     reg clk;
     reg reset;
@@ -8,15 +8,15 @@ module foo_testbench;
     reg start;
     wire finish;
 
-    reg [7:0] arg_0;
-    reg [7:0] arg_1;
-    reg [7:0] arg_2;
-    reg [7:0] arg_3;
-    reg [7:0] arg_4;
-    reg [15:0] arg_5;
-    wire [15:0] return_val;
+    reg [7:0] arg_0; // a
+    reg [7:0] arg_1; // b
+    reg [7:0] arg_2; // c
+    reg [15:0] arg_3; // d
+    reg [15:0] arg_4; // e
+    reg [31:0] arg_5; // f
+    wire [31:0] return_val;
 
-    foo foo_dut (
+    bar bar_dut (
         .clk(clk),
         .reset(reset),
 
@@ -47,12 +47,12 @@ module foo_testbench;
         reset = 1'b0;
         start = 1'b0;
 
-        arg_0 = 8'd5;   // a
-        arg_1 = 8'd12;  // b
-        arg_2 = 8'd4;   // c
-        arg_3 = 8'd2;   // d
-        arg_4 = 8'd9;   // e
-        arg_5 = 16'd10; // f
+        arg_0 = 8'd10;      // a
+        arg_1 = 8'd5;       // b
+        arg_2 = 8'd3;       // c
+        arg_3 = 16'd90;     // d
+        arg_4 = 16'd189;    // e
+        arg_5 = 32'd780;    // f
 
         #10 reset = 1'b1;
         #10 clk = !clk;
